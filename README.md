@@ -1,18 +1,38 @@
 # Lobster Trading Agent
 
-一个以学习全栈开发和 Agent/Harness 工程为第一目标的交易辅助 Agent。
+面向 Crypto 交易研究的对话式 Agent。当前版本已经具备自研 Mini Harness、DeepSeek V4 模型适配、工具注册与执行、短期会话记忆、运行事件流，以及 Binance 多市场公开行情工具。
 
-## 当前状态
+## 当前能力
 
-项目处于 Day 0：开发基线。当前只提供可运行的前端入口、后端健康检查、数据库容器和测试环境。Day 1 的聊天界面由学习者按照 `docs/day-01.md` 亲手完成。
+- React 对话界面，支持桌面和手机。
+- FastAPI SSE 流式通信。
+- Agent Loop：模型判断、工具调用、结果观察、继续推理、最终回答。
+- DeepSeek `deepseek-v4-flash`，可通过环境变量切换模型。
+- 工具参数校验、超时、统一错误和最大循环步数。
+- Binance 现货、U 本位、币本位和期权的统一报价/K 线接口。
+- 进程内短期对话记忆；PostgreSQL 持久化仍在开发。
+- 首月只读：没有真实下单、提现或转账工具。
 
 ## 目录
 
 ```text
-apps/web/       React + TypeScript 前端
-services/api/   FastAPI 后端
-docs/           路线、练习和进度
+apps/web/                 React + TypeScript 前端
+services/api/app/agent/   自研 Agent/Harness 核心
+services/api/app/tools/   Agent 可调用的外部工具
+services/api/tests/       后端行为测试
+docs/                     路线和进度
 ```
+
+## 配置
+
+复制 `.env.example` 中需要的变量。不要把真实密钥提交到 Git。
+
+```text
+DEEPSEEK_API_KEY=your-key
+DEEPSEEK_MODEL=deepseek-v4-flash
+```
+
+没有配置密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
 
 ## 启动
 
@@ -41,9 +61,9 @@ docker compose up -d postgres
 
 ```powershell
 npm run test:web
+npm run build:web
 cd services/api
 uv run pytest
 ```
 
-正式功能按照 `docs/roadmap.md` 分阶段实现。核心 Agent 代码由学习者亲手完成，重复配置和交易所适配可以使用 AI 辅助。
-
+Binance 衍生品接口可能根据服务器所在地区返回 HTTP 451。系统会把它记录为明确的工具错误，不会绕过地区限制或把失败解释成“没有行情”。

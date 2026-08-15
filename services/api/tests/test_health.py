@@ -26,3 +26,53 @@ def test_health_endpoint_reports_service_is_ready() -> None:
         "service": "lobster-api",
     }
 
+
+def test_chat_endpoint_streams_agent_events_and_a_safe_fallback_reply() -> None:
+    from app.main import app
+
+    async def make_request() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            return await client.post(
+                "/api/chat/stream",
+                json={
+                    "message": "分析 BTC 当前走势",
+                    "session_id": "test-agent-session",
+                },
+            )
+
+    response = asyncio.run(make_request())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "event: session" in response.text
+    assert "test-agent-session" in response.text
+    assert "event: agent_event" in response.text
+    assert '"type": "run_started"' in response.text
+    assert "event: delta" in response.text
+    assert "尚未配置 DEEPSEEK_API_KEY" in response.text
+    assert "event: done" in response.text
+
+    from app.agent.runtime import conversation_store
+
+    history = asyncio.run(conversation_store.get_recent("test-agent-session"))
+    assert [message.role for message in history] == ["user", "assistant"]
+
+
+def test_chat_endpoint_rejects_a_blank_message() -> None:
+    from app.main import app
+
+    async def make_request() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            return await client.post("/api/chat/stream", json={"message": "   "})
+
+    response = asyncio.run(make_request())
+
+    assert response.status_code == 422
