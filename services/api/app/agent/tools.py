@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from app.agent.models import ToolError, ToolExecutionResult
+from app.agent.models import ToolError, ToolExecutionResult, ToolPermission
 
 ToolHandler = Callable[[BaseModel], Any | Awaitable[Any]]
 
@@ -19,6 +19,7 @@ class RegisteredTool:
     input_model: type[BaseModel]
     handler: ToolHandler
     timeout_seconds: float
+    permission: ToolPermission
 
     def definition(self) -> dict[str, object]:
         return {
@@ -40,6 +41,7 @@ class ToolRegistry:
         input_model: type[BaseModel],
         handler: ToolHandler,
         timeout_seconds: float = 20,
+        permission: ToolPermission = "read",
     ) -> None:
         if name in self._tools:
             raise ValueError(f"Tool already registered: {name}")
@@ -49,15 +51,25 @@ class ToolRegistry:
             input_model=input_model,
             handler=handler,
             timeout_seconds=timeout_seconds,
+            permission=permission,
         )
 
     def definitions(self) -> list[dict[str, object]]:
         return [tool.definition() for tool in self._tools.values()]
 
+    def permission_for(self, name: str) -> ToolPermission | None:
+        tool = self._tools.get(name)
+        return tool.permission if tool else None
+
+    def requires_confirmation(self, name: str) -> bool:
+        return self.permission_for(name) in {"simulate", "trade"}
+
     async def execute(
         self,
         name: str,
         arguments: dict[str, Any],
+        *,
+        confirmed: bool = False,
     ) -> ToolExecutionResult:
         started_at = perf_counter()
         tool = self._tools.get(name)
@@ -66,6 +78,18 @@ class ToolRegistry:
                 started_at,
                 code="unknown_tool",
                 message=f"Tool is not registered: {name}",
+            )
+        if tool.permission == "prohibited":
+            return self._failure(
+                started_at,
+                code="tool_prohibited",
+                message=f"Tool is permanently prohibited: {name}",
+            )
+        if tool.permission in {"simulate", "trade"} and not confirmed:
+            return self._failure(
+                started_at,
+                code="confirmation_required",
+                message=f"Tool requires explicit confirmation: {name}",
             )
 
         try:

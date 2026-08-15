@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+ToolPermission = Literal["read", "write", "simulate", "trade", "prohibited"]
+
 
 class ToolCall(BaseModel):
     id: str
@@ -36,6 +38,9 @@ class ToolError(BaseModel):
         "invalid_arguments",
         "execution_failed",
         "timeout",
+        "confirmation_required",
+        "tool_prohibited",
+        "invalid_confirmation",
     ]
     message: str
 
@@ -55,6 +60,9 @@ AgentEventType = Literal[
     "answer_delta",
     "run_completed",
     "run_failed",
+    "confirmation_required",
+    "run_paused",
+    "run_resumed",
 ]
 
 

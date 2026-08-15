@@ -3,8 +3,10 @@ import os
 from app.agent.loop import AgentRunner
 from app.agent.memory import InMemoryConversationStore
 from app.agent.models import AssistantTurn, ModelMessage
+from app.agent.permissions import InMemoryCheckpointStore, InMemoryConfirmationStore
 from app.agent.providers.deepseek import DeepSeekProvider
 from app.agent.tools import ToolRegistry
+from app.agent.traces import InMemoryRunTraceStore
 from app.tools.binance_market import BinanceMarketClient, register_binance_market_tools
 
 SYSTEM_PROMPT = """You are Lobster, a cautious cryptocurrency trading research agent.
@@ -16,6 +18,9 @@ Reply in the user's language and keep the conclusion concise.
 """
 
 conversation_store = InMemoryConversationStore(max_messages=20)
+trace_store = InMemoryRunTraceStore()
+confirmation_store = InMemoryConfirmationStore()
+checkpoint_store = InMemoryCheckpointStore()
 
 
 class UnconfiguredProvider:
@@ -46,4 +51,6 @@ def build_agent_runner() -> AgentRunner:
         provider=provider,
         tools=tools,
         max_steps=8,
+        confirmations=confirmation_store,
+        checkpoints=checkpoint_store,
     )

@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -60,6 +61,25 @@ def test_chat_endpoint_streams_agent_events_and_a_safe_fallback_reply() -> None:
 
     history = asyncio.run(conversation_store.get_recent("test-agent-session"))
     assert [message.role for message in history] == ["user", "assistant"]
+
+    run_started = next(
+        json.loads(line.removeprefix("data: "))
+        for line in response.text.splitlines()
+        if line.startswith("data: ") and '"run_started"' in line
+    )
+
+    async def get_trace() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            return await client.get(f"/api/runs/{run_started['run_id']}")
+
+    trace_response = asyncio.run(get_trace())
+    assert trace_response.status_code == 200
+    assert trace_response.json()["status"] == "completed"
+    assert trace_response.json()["events"][0]["type"] == "run_started"
 
 
 def test_chat_endpoint_rejects_a_blank_message() -> None:
