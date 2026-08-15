@@ -6,10 +6,19 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  trace?: AgentTraceEvent[];
 };
 
 type StreamEvent = {
   content?: string;
+};
+
+type AgentTraceEvent = {
+  type: string;
+  run_id: string;
+  sequence: number;
+  step: number;
+  data: Record<string, unknown>;
 };
 
 const starterPrompts = [
@@ -30,6 +39,7 @@ const initialMessages: ChatMessage[] = [
 async function readEventStream(
   response: Response,
   onDelta: (content: string) => void,
+  onAgentEvent: (event: AgentTraceEvent) => void,
 ) {
   if (!response.ok || !response.body) {
     throw new Error("服务暂时不可用，请稍后重试。");
@@ -46,17 +56,41 @@ async function readEventStream(
     buffer = blocks.pop() ?? "";
 
     for (const block of blocks) {
+      const eventName = block
+        .split("\n")
+        .find((line) => line.startsWith("event: "))
+        ?.slice(7);
       const dataLine = block
         .split("\n")
         .find((line) => line.startsWith("data: "));
       if (!dataLine) continue;
 
       const event = JSON.parse(dataLine.slice(6)) as StreamEvent;
-      if (event.content) onDelta(event.content);
+      if (eventName === "delta" && event.content) onDelta(event.content);
+      if (eventName === "agent_event") {
+        onAgentEvent(event as AgentTraceEvent);
+      }
     }
 
     if (done) break;
   }
+}
+
+function describeTraceEvent(event: AgentTraceEvent) {
+  const toolName = typeof event.data.name === "string" ? event.data.name : "未知工具";
+  const labels: Record<string, string> = {
+    run_started: "开始理解任务",
+    model_started: `模型判断 · 第 ${event.step} 步`,
+    tool_started: `调用工具：${toolName}`,
+    tool_finished: `工具完成：${toolName}`,
+    confirmation_required: `等待确认：${toolName}`,
+    run_paused: "任务已暂停",
+    run_resumed: "任务已恢复",
+    answer_delta: "整理最终回答",
+    run_completed: "任务完成",
+    run_failed: "任务失败",
+  };
+  return labels[event.type] ?? event.type;
 }
 
 function App() {
@@ -94,15 +128,27 @@ function App() {
         body: JSON.stringify({ message, session_id: sessionId }),
       });
 
-      await readEventStream(response, (content) => {
-        setMessages((current) =>
-          current.map((item) =>
-            item.id === assistantId
-              ? { ...item, content: item.content + content }
-              : item,
-          ),
-        );
-      });
+      await readEventStream(
+        response,
+        (content) => {
+          setMessages((current) =>
+            current.map((item) =>
+              item.id === assistantId
+                ? { ...item, content: item.content + content }
+                : item,
+            ),
+          );
+        },
+        (traceEvent) => {
+          setMessages((current) =>
+            current.map((item) =>
+              item.id === assistantId
+                ? { ...item, trace: [...(item.trace ?? []), traceEvent] }
+                : item,
+            ),
+          );
+        },
+      );
     } catch (caughtError) {
       setMessages((current) =>
         current.filter((item) => item.id !== assistantId),
@@ -167,8 +213,23 @@ function App() {
               <span className="message-role">
                 {message.role === "assistant" ? "LOBSTER" : "YOU"}
               </span>
-              <div className="message-content">
-                {message.content || <span className="typing">正在思考…</span>}
+              <div className="message-body">
+                <div className="message-content">
+                  {message.content || <span className="typing">正在思考…</span>}
+                </div>
+                {message.trace && message.trace.length > 0 && (
+                  <details className="execution-trace">
+                    <summary>执行过程 · {message.trace.length} 条记录</summary>
+                    <ol>
+                      {message.trace.map((traceEvent) => (
+                        <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
+                          <span>{describeTraceEvent(traceEvent)}</span>
+                          <small>步骤 {traceEvent.step}</small>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
               </div>
             </article>
           ))}

@@ -71,4 +71,42 @@ describe("Lobster Trading Agent chat", () => {
       session_id: expect.any(String),
     });
   });
+
+  it("shows an expandable execution trace for agent tool calls", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(
+          encoder.encode(
+            'event: agent_event\ndata: {"type":"tool_started","run_id":"run-1","sequence":2,"step":1,"data":{"name":"get_market_quote"}}\n\n',
+          ),
+        );
+        controller.enqueue(
+          encoder.encode(
+            'event: agent_event\ndata: {"type":"tool_finished","run_id":"run-1","sequence":3,"step":1,"data":{"name":"get_market_quote","ok":true}}\n\n',
+          ),
+        );
+        controller.enqueue(
+          encoder.encode('event: delta\ndata: {"content":"BTC 行情已读取"}\n\n'),
+        );
+        controller.enqueue(encoder.encode('event: done\ndata: {}\n\n'));
+        controller.close();
+      },
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, { status: 200 }),
+    );
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("交易问题"), {
+      target: { value: "查询 BTC" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送消息" }));
+
+    const traceSummary = await screen.findByText("执行过程 · 2 条记录");
+    fireEvent.click(traceSummary);
+
+    expect(screen.getByText("调用工具：get_market_quote")).toBeInTheDocument();
+    expect(screen.getByText("工具完成：get_market_quote")).toBeInTheDocument();
+  });
 });

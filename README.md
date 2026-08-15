@@ -4,7 +4,7 @@
 
 ## 当前能力
 
-- React 对话界面，支持桌面和手机。
+- React 对话界面，支持桌面和手机，并可展开查看 Agent 的执行过程。
 - FastAPI SSE 流式通信。
 - Agent Loop：模型判断、工具调用、结果观察、继续推理、最终回答。
 - DeepSeek `deepseek-v4-flash`，可通过环境变量切换模型。
