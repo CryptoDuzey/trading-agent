@@ -10,7 +10,7 @@
 - DeepSeek `deepseek-v4-flash`，可通过环境变量切换模型。
 - 工具参数校验、超时、统一错误和最大循环步数。
 - Binance 现货、U 本位、币本位和期权的统一报价/K 线接口。
-- 进程内短期对话记忆；PostgreSQL 持久化仍在开发。
+- PostgreSQL 保存对话、执行轨迹、确认票据和任务恢复点。
 - 首月只读：没有真实下单、提现或转账工具。
 
 ## 目录
@@ -55,7 +55,12 @@ uv run uvicorn app.main:app --reload
 
 ```powershell
 docker compose up -d postgres
+cd services/api
+$env:DATABASE_URL="postgresql+asyncpg://lobster:local-development-only@localhost:5432/lobster"
+uv run alembic upgrade head
 ```
+
+没有设置 `DATABASE_URL` 时会自动使用内存模式，适合快速试用；正式使用时应配置数据库，以便服务重启后恢复历史和待确认任务。
 
 ## 验证
 
@@ -64,6 +69,8 @@ npm run test:web
 npm run build:web
 cd services/api
 uv run pytest
+$env:TEST_DATABASE_URL=$env:DATABASE_URL
+uv run pytest tests/persistence/test_postgres_stores.py
 ```
 
 Binance 衍生品接口可能根据服务器所在地区返回 HTTP 451。系统会把它记录为明确的工具错误，不会绕过地区限制或把失败解释成“没有行情”。

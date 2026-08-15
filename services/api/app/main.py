@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any, Literal, TypedDict
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from app.agent.runtime import (
     SYSTEM_PROMPT,
     build_agent_runner,
     conversation_store,
+    database,
     trace_store,
 )
 from app.agent.traces import RunTrace
@@ -22,7 +24,14 @@ class HealthResponse(TypedDict):
     service: Literal["lobster-api"]
 
 
-app = FastAPI(title="Lobster Trading Agent API")
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    yield
+    if database is not None:
+        await database.dispose()
+
+
+app = FastAPI(title="Lobster Trading Agent API", lifespan=lifespan)
 
 
 class ChatRequest(BaseModel):

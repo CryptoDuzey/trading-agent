@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 
 from app.agent.loop import AgentRunner
 from app.agent.memory import InMemoryConversationStore
@@ -7,6 +8,13 @@ from app.agent.permissions import InMemoryCheckpointStore, InMemoryConfirmationS
 from app.agent.providers.deepseek import DeepSeekProvider
 from app.agent.tools import ToolRegistry
 from app.agent.traces import InMemoryRunTraceStore
+from app.persistence.database import Database
+from app.persistence.stores import (
+    PostgresCheckpointStore,
+    PostgresConfirmationStore,
+    PostgresConversationStore,
+    PostgresRunTraceStore,
+)
 from app.tools.binance_market import BinanceMarketClient, register_binance_market_tools
 
 SYSTEM_PROMPT = """You are Lobster, a cautious cryptocurrency trading research agent.
@@ -17,10 +25,42 @@ Do not promise returns. Real orders, withdrawals, and transfers are unavailable.
 Reply in the user's language and keep the conclusion concise.
 """
 
-conversation_store = InMemoryConversationStore(max_messages=20)
-trace_store = InMemoryRunTraceStore()
-confirmation_store = InMemoryConfirmationStore()
-checkpoint_store = InMemoryCheckpointStore()
+
+@dataclass(frozen=True)
+class StoreBundle:
+    database: Database | None
+    conversations: InMemoryConversationStore | PostgresConversationStore
+    traces: InMemoryRunTraceStore | PostgresRunTraceStore
+    confirmations: InMemoryConfirmationStore | PostgresConfirmationStore
+    checkpoints: InMemoryCheckpointStore | PostgresCheckpointStore
+
+
+def build_store_bundle(database_url: str) -> StoreBundle:
+    if not database_url.strip():
+        return StoreBundle(
+            database=None,
+            conversations=InMemoryConversationStore(max_messages=20),
+            traces=InMemoryRunTraceStore(),
+            confirmations=InMemoryConfirmationStore(),
+            checkpoints=InMemoryCheckpointStore(),
+        )
+
+    database = Database(database_url.strip())
+    return StoreBundle(
+        database=database,
+        conversations=PostgresConversationStore(database, max_messages=20),
+        traces=PostgresRunTraceStore(database),
+        confirmations=PostgresConfirmationStore(database),
+        checkpoints=PostgresCheckpointStore(database),
+    )
+
+
+stores = build_store_bundle(os.getenv("DATABASE_URL", ""))
+database = stores.database
+conversation_store = stores.conversations
+trace_store = stores.traces
+confirmation_store = stores.confirmations
+checkpoint_store = stores.checkpoints
 
 
 class UnconfiguredProvider:
