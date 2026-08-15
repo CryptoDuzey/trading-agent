@@ -8,6 +8,9 @@ from app.agent.permissions import InMemoryCheckpointStore, InMemoryConfirmationS
 from app.agent.providers.deepseek import DeepSeekProvider
 from app.agent.tools import ToolRegistry
 from app.agent.traces import InMemoryRunTraceStore
+from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
+from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
+from app.monitoring.tools import register_monitoring_tools
 from app.persistence.database import Database
 from app.persistence.stores import (
     PostgresCheckpointStore,
@@ -33,6 +36,7 @@ class StoreBundle:
     traces: InMemoryRunTraceStore | PostgresRunTraceStore
     confirmations: InMemoryConfirmationStore | PostgresConfirmationStore
     checkpoints: InMemoryCheckpointStore | PostgresCheckpointStore
+    alerts: InMemoryAlertStore | PostgresAlertStore
 
 
 def build_store_bundle(database_url: str) -> StoreBundle:
@@ -43,6 +47,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
             traces=InMemoryRunTraceStore(),
             confirmations=InMemoryConfirmationStore(),
             checkpoints=InMemoryCheckpointStore(),
+            alerts=InMemoryAlertStore(),
         )
 
     database = Database(database_url.strip())
@@ -52,6 +57,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
         traces=PostgresRunTraceStore(database),
         confirmations=PostgresConfirmationStore(database),
         checkpoints=PostgresCheckpointStore(database),
+        alerts=PostgresAlertStore(database),
     )
 
 
@@ -61,6 +67,14 @@ conversation_store = stores.conversations
 trace_store = stores.traces
 confirmation_store = stores.confirmations
 checkpoint_store = stores.checkpoints
+alert_store = stores.alerts
+feishu_webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "").strip()
+alert_monitor = AlertMonitor(
+    store=alert_store,
+    notifier=ChannelNotifier(
+        FeishuNotifier(feishu_webhook_url) if feishu_webhook_url else None
+    ),
+)
 
 
 class UnconfiguredProvider:
@@ -77,7 +91,7 @@ class UnconfiguredProvider:
         )
 
 
-def build_agent_runner() -> AgentRunner:
+def build_agent_runner(owner_id: str = "default") -> AgentRunner:
     api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     model = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash").strip()
     provider = (
@@ -87,6 +101,7 @@ def build_agent_runner() -> AgentRunner:
     )
     tools = ToolRegistry()
     register_binance_market_tools(tools, BinanceMarketClient())
+    register_monitoring_tools(tools, alert_store, owner_id=owner_id)
     return AgentRunner(
         provider=provider,
         tools=tools,

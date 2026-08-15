@@ -21,6 +21,17 @@ type AgentTraceEvent = {
   data: Record<string, unknown>;
 };
 
+type AlertTask = {
+  id: string;
+  market: string;
+  symbol: string;
+  condition: "price_above" | "price_below";
+  threshold: string;
+  status: "active" | "paused" | "completed" | "failed";
+  notification_channel: "site" | "feishu";
+  trigger_count: number;
+};
+
 const starterPrompts = [
   "分析 BTC 当前 15 分钟走势",
   "扫描 Binance 异常放量币种",
@@ -93,12 +104,78 @@ function describeTraceEvent(event: AgentTraceEvent) {
   return labels[event.type] ?? event.type;
 }
 
+function getOrCreateSessionId() {
+  const stored = localStorage.getItem("lobster-session-id");
+  if (stored) return stored;
+  const created = crypto.randomUUID();
+  localStorage.setItem("lobster-session-id", created);
+  return created;
+}
+
+const taskStatusLabels: Record<AlertTask["status"], string> = {
+  active: "监控中",
+  paused: "已暂停",
+  completed: "已触发",
+  failed: "检查失败",
+};
+
 function App() {
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId] = useState(getOrCreateSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<AlertTask[]>([]);
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
+
+  const loadTasks = async () => {
+    setTaskPanelOpen(true);
+    setTasksLoading(true);
+    setTaskError(null);
+    try {
+      const response = await fetch(
+        `/api/alerts?owner_id=${encodeURIComponent(sessionId)}`,
+      );
+      if (!response.ok) throw new Error("监控任务暂时无法读取。");
+      setTasks((await response.json()) as AlertTask[]);
+    } catch (caughtError) {
+      setTaskError(
+        caughtError instanceof Error ? caughtError.message : "读取任务失败。",
+      );
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const toggleTaskPanel = () => {
+    if (taskPanelOpen) {
+      setTaskPanelOpen(false);
+      return;
+    }
+    void loadTasks();
+  };
+
+  const changeTaskStatus = async (task: AlertTask) => {
+    const action = task.status === "active" ? "pause" : "resume";
+    setTaskError(null);
+    try {
+      const response = await fetch(
+        `/api/alerts/${task.id}/${action}?owner_id=${encodeURIComponent(sessionId)}`,
+        { method: "POST" },
+      );
+      if (!response.ok) throw new Error("任务状态修改失败。");
+      const updated = (await response.json()) as AlertTask;
+      setTasks((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (caughtError) {
+      setTaskError(
+        caughtError instanceof Error ? caughtError.message : "任务状态修改失败。",
+      );
+    }
+  };
 
   const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -202,10 +279,59 @@ function App() {
             <p className="overline">CONVERSATION 01</p>
             <h2>今天想研究什么？</h2>
           </div>
-          <button className="icon-button" type="button" aria-label="打开任务面板">
-            任务 <span>0</span>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="打开任务面板"
+            onClick={toggleTaskPanel}
+          >
+            任务 <span>{tasks.filter((task) => task.status === "active").length}</span>
           </button>
         </header>
+
+        {taskPanelOpen && (
+          <aside className="task-panel" aria-label="监控任务面板">
+            <header>
+              <div>
+                <p className="overline">DELEGATED TASKS</p>
+                <h3>监控任务</h3>
+              </div>
+              <button type="button" onClick={() => setTaskPanelOpen(false)} aria-label="关闭任务面板">
+                ×
+              </button>
+            </header>
+            {tasksLoading && <p className="task-empty">正在读取任务…</p>}
+            {taskError && <p className="task-error">{taskError}</p>}
+            {!tasksLoading && !taskError && tasks.length === 0 && (
+              <p className="task-empty">还没有任务。你可以在对话中让我创建价格提醒。</p>
+            )}
+            <div className="task-list">
+              {tasks.map((task) => (
+                <article className="task-card" key={task.id}>
+                  <div className="task-card-heading">
+                    <strong>{task.symbol}</strong>
+                    <span className={`task-status ${task.status}`}>
+                      {taskStatusLabels[task.status]}
+                    </span>
+                  </div>
+                  <p>
+                    价格{task.condition === "price_below" ? "低于" : "高于"} {task.threshold}
+                  </p>
+                  <small>{task.market} · {task.notification_channel === "feishu" ? "飞书" : "站内"}</small>
+                  {(task.status === "active" || task.status === "paused") && (
+                    <button
+                      type="button"
+                      aria-label={`${task.status === "active" ? "暂停" : "恢复"} ${task.symbol}`}
+                      onClick={() => void changeTaskStatus(task)}
+                    >
+                      {task.status === "active" ? "暂停" : "恢复"}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          </aside>
+        )}
 
         <div className="message-list" aria-live="polite">
           {messages.map((message) => (

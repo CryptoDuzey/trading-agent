@@ -12,6 +12,7 @@
 - Binance 现货、U 本位、币本位和期权的统一报价/K 线接口。
 - Binance 全市场异常扫描，以及 MA20、RSI、ATR、布林带和成交量比率分析。
 - PostgreSQL 保存对话、执行轨迹、确认票据和任务恢复点。
+- 对话式价格监控任务，支持暂停、恢复、冷却、站内状态和飞书机器人通知。
 - 首月只读：没有真实下单、提现或转账工具。
 
 ## 目录
@@ -31,6 +32,9 @@ docs/                     路线和进度
 ```text
 DEEPSEEK_API_KEY=your-key
 DEEPSEEK_MODEL=deepseek-v4-flash
+ENABLE_ALERT_MONITOR=true
+ALERT_POLL_SECONDS=5
+FEISHU_WEBHOOK_URL=可选的飞书机器人地址
 ```
 
 没有配置密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
@@ -61,7 +65,7 @@ $env:DATABASE_URL="postgresql+asyncpg://lobster:local-development-only@localhost
 uv run alembic upgrade head
 ```
 
-没有设置 `DATABASE_URL` 时会自动使用内存模式，适合快速试用；正式使用时应配置数据库，以便服务重启后恢复历史和待确认任务。
+没有设置 `DATABASE_URL` 时会自动使用内存模式，适合快速试用；正式使用时应配置数据库，以便服务重启后恢复历史、待确认任务和监控任务。飞书地址留空时，站内提醒仍然可用。
 
 ## 验证
 

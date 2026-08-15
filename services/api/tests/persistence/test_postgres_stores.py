@@ -1,11 +1,16 @@
 import asyncio
 import os
+from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 
 from app.agent.models import AgentEvent, ToolCall
 from app.agent.permissions import RunCheckpoint
+from app.monitoring.models import AlertObservation, CreateAlertInput
+from app.monitoring.rules import evaluate_alert
+from app.monitoring.store import PostgresAlertStore
 from app.persistence.database import Database
 from app.persistence.stores import (
     PostgresCheckpointStore,
@@ -108,3 +113,46 @@ def test_confirmation_and_checkpoint_survive_new_store_instances() -> None:
     assert checkpoint is not None
     assert checkpoint.pending_calls == [tool_call]
     assert ticket.status == "consumed"
+
+
+def test_alert_task_and_trigger_survive_new_store_instances() -> None:
+    owner_id = f"test-owner-{uuid4()}"
+
+    async def write_then_reopen():
+        database = Database(DATABASE_URL or "")
+        store = PostgresAlertStore(database)
+        task = await store.create(
+            owner_id,
+            CreateAlertInput(
+                market="spot",
+                symbol="BTCUSDT",
+                condition="price_below",
+                threshold="65000",
+                one_shot=True,
+            ),
+        )
+        due = await store.list_due(datetime.now(UTC), limit=10)
+        evaluation = evaluate_alert(
+            task,
+            AlertObservation(price=Decimal(64900)),
+        )
+        trigger = await store.record_evaluation(task.id, evaluation)
+        await database.dispose()
+
+        reopened = Database(DATABASE_URL or "")
+        try:
+            reopened_store = PostgresAlertStore(reopened)
+            tasks = await reopened_store.list_for_owner(owner_id)
+            triggers = await reopened_store.list_triggers(owner_id)
+            return task, due, trigger, tasks, triggers
+        finally:
+            await reopened.dispose()
+
+    task, due, trigger, tasks, triggers = asyncio.run(write_then_reopen())
+
+    assert task.id in {item.id for item in due}
+    assert trigger is not None
+    assert tasks[0].status == "completed"
+    assert tasks[0].trigger_count == 1
+    assert triggers[0].reason == "BTCUSDT 价格 64900 已低于或等于 65000"
+    assert triggers[0].notified is False

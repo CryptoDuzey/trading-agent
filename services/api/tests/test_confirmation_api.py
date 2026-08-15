@@ -51,7 +51,11 @@ def test_confirmation_endpoint_resumes_a_paused_agent_run(monkeypatch) -> None:
         permission="simulate",
     )
     runner = AgentRunner(provider=SimulationProvider(), tools=registry)
-    monkeypatch.setattr(main_module, "build_agent_runner", lambda: runner)
+    monkeypatch.setattr(
+        main_module,
+        "build_agent_runner",
+        lambda _owner_id="default": runner,
+    )
 
     async def make_requests():
         transport = httpx.ASGITransport(app=main_module.app)

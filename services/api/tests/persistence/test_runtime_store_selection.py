@@ -1,5 +1,6 @@
 from app.agent.memory import InMemoryConversationStore
 from app.agent.runtime import build_store_bundle
+from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.persistence.stores import (
     PostgresCheckpointStore,
     PostgresConfirmationStore,
@@ -13,6 +14,7 @@ def test_runtime_uses_memory_stores_without_database_url() -> None:
 
     assert stores.database is None
     assert isinstance(stores.conversations, InMemoryConversationStore)
+    assert isinstance(stores.alerts, InMemoryAlertStore)
 
 
 def test_runtime_uses_postgres_stores_with_database_url() -> None:
@@ -25,3 +27,4 @@ def test_runtime_uses_postgres_stores_with_database_url() -> None:
     assert isinstance(stores.traces, PostgresRunTraceStore)
     assert isinstance(stores.confirmations, PostgresConfirmationStore)
     assert isinstance(stores.checkpoints, PostgresCheckpointStore)
+    assert isinstance(stores.alerts, PostgresAlertStore)

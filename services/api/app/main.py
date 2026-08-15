@@ -1,4 +1,6 @@
+import asyncio
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, Literal, TypedDict
@@ -6,17 +8,20 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.agent.loop import AgentRunner
 from app.agent.runtime import (
     SYSTEM_PROMPT,
+    alert_monitor,
+    alert_store,
     build_agent_runner,
     conversation_store,
     database,
     trace_store,
 )
 from app.agent.traces import RunTrace
+from app.monitoring.models import AlertTask, CreateAlertInput
 
 
 class HealthResponse(TypedDict):
@@ -26,9 +31,26 @@ class HealthResponse(TypedDict):
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    yield
-    if database is not None:
-        await database.dispose()
+    stop_event = asyncio.Event()
+    monitor_task: asyncio.Task[None] | None = None
+    monitor_enabled = os.getenv("ENABLE_ALERT_MONITOR", "true").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    if monitor_enabled:
+        poll_seconds = float(os.getenv("ALERT_POLL_SECONDS", "5"))
+        monitor_task = asyncio.create_task(
+            alert_monitor.run_forever(stop_event, poll_seconds=poll_seconds)
+        )
+    try:
+        yield
+    finally:
+        stop_event.set()
+        if monitor_task is not None:
+            await monitor_task
+        if database is not None:
+            await database.dispose()
 
 
 app = FastAPI(title="Lobster Trading Agent API", lifespan=lifespan)
@@ -55,6 +77,10 @@ class ChatRequest(BaseModel):
         return cleaned
 
 
+class AlertCreateRequest(CreateAlertInput):
+    owner_id: str = Field(min_length=1, max_length=100)
+
+
 def as_sse(event: str, payload: dict[str, Any]) -> str:
     data = json.dumps(payload, ensure_ascii=False)
     return f"event: {event}\ndata: {data}\n\n"
@@ -64,7 +90,7 @@ async def stream_agent_reply(
     message: str,
     session_id: str,
 ) -> AsyncIterator[str]:
-    runner = build_agent_runner()
+    runner = build_agent_runner(session_id)
     history = await conversation_store.get_recent(session_id)
     assistant_parts: list[str] = []
     completed = False
@@ -169,6 +195,7 @@ async def approve_confirmation(confirmation_id: str) -> StreamingResponse:
     trace = await trace_store.get(checkpoint.run_id)
     if trace is None:
         raise HTTPException(status_code=404, detail="Run trace not found")
+    runner = build_agent_runner(trace.session_id)
     try:
         await runner.confirmations.approve(confirmation_id)
     except ValueError as error:
@@ -201,3 +228,42 @@ async def stream_chat(request: ChatRequest) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/api/alerts", response_model=AlertTask, status_code=201)
+async def create_alert(request: AlertCreateRequest) -> AlertTask:
+    values = request.model_dump(exclude={"owner_id"})
+    return await alert_store.create(
+        request.owner_id,
+        CreateAlertInput.model_validate(values),
+    )
+
+
+@app.get("/api/alerts", response_model=list[AlertTask])
+async def list_alerts(owner_id: str) -> list[AlertTask]:
+    return await alert_store.list_for_owner(owner_id)
+
+
+async def change_alert_status(
+    owner_id: str,
+    task_id: str,
+    status: str,
+) -> AlertTask:
+    try:
+        return await alert_store.set_status(
+            owner_id,
+            task_id,
+            status,  # type: ignore[arg-type]
+        )
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="Alert task not found") from error
+
+
+@app.post("/api/alerts/{task_id}/pause", response_model=AlertTask)
+async def pause_alert(task_id: str, owner_id: str) -> AlertTask:
+    return await change_alert_status(owner_id, task_id, "paused")
+
+
+@app.post("/api/alerts/{task_id}/resume", response_model=AlertTask)
+async def resume_alert(task_id: str, owner_id: str) -> AlertTask:
+    return await change_alert_status(owner_id, task_id, "active")

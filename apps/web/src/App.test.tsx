@@ -5,6 +5,7 @@ import App from "./App";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  localStorage.clear();
 });
 
 describe("Lobster Trading Agent chat", () => {
@@ -108,5 +109,58 @@ describe("Lobster Trading Agent chat", () => {
 
     expect(screen.getByText("调用工具：get_market_quote")).toBeInTheDocument();
     expect(screen.getByText("工具完成：get_market_quote")).toBeInTheDocument();
+  });
+
+  it("loads monitoring tasks and can pause an active task", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "11111111-1111-1111-1111-111111111111",
+              owner_id: "owner",
+              market: "spot",
+              symbol: "BTCUSDT",
+              condition: "price_below",
+              threshold: "65000",
+              status: "active",
+              notification_channel: "site",
+              trigger_count: 0,
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "11111111-1111-1111-1111-111111111111",
+            owner_id: "owner",
+            market: "spot",
+            symbol: "BTCUSDT",
+            condition: "price_below",
+            threshold: "65000",
+            status: "paused",
+            notification_channel: "site",
+            trigger_count: 0,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "打开任务面板" }));
+
+    expect(await screen.findByText("BTCUSDT")).toBeInTheDocument();
+    expect(screen.getByText("价格低于 65000")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "暂停 BTCUSDT" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("已暂停")).toBeInTheDocument();
+    });
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain(
+      "/api/alerts?owner_id=",
+    );
+    expect(vi.mocked(fetch).mock.calls[1][0]).toContain("/pause?owner_id=");
   });
 });
