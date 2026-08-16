@@ -20,6 +20,13 @@ class ModelMessage(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
 
 
+class ConversationCompactionBatch(BaseModel):
+    previous_summary: str | None = None
+    previous_through_message_id: int | None = None
+    through_message_id: int | None = None
+    messages: list[ModelMessage]
+
+
 class TokenUsage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0

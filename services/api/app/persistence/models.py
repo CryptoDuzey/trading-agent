@@ -28,6 +28,10 @@ class ConversationRow(Base):
     __tablename__ = "conversations"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
+    summary: Mapped[str | None] = mapped_column(Text)
+    summary_through_message_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -285,4 +289,50 @@ class AlertTriggerRow(Base):
     notification_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PositionRow(Base):
+    __tablename__ = "positions"
+    __table_args__ = (
+        CheckConstraint(
+            "market in ('spot', 'usdm', 'coinm', 'options')",
+            name="positions_market_check",
+        ),
+        CheckConstraint(
+            "side in ('long', 'short')",
+            name="positions_side_check",
+        ),
+        CheckConstraint(
+            "source in ('manual', 'binance')",
+            name="positions_source_check",
+        ),
+        UniqueConstraint(
+            "owner_id",
+            "market",
+            "symbol",
+            "side",
+            name="positions_owner_market_symbol_side_key",
+        ),
+        Index("positions_owner_opened_idx", "owner_id", "opened_at"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(Text, nullable=False)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    side: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    entry_price: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    leverage: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    stop_loss: Mapped[Any] = mapped_column(Numeric(38, 18))
+    source: Mapped[str] = mapped_column(Text, nullable=False, default="manual")
+    opened_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )

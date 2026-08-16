@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,12 +17,15 @@ from app.agent.runtime import (
     alert_monitor,
     alert_store,
     build_agent_runner,
+    compact_conversation,
     conversation_store,
     database,
     trace_store,
 )
 from app.agent.traces import RunTrace
 from app.monitoring.models import AlertTask, CreateAlertInput
+
+logger = logging.getLogger(__name__)
 
 
 class HealthResponse(TypedDict):
@@ -130,6 +134,10 @@ async def stream_agent_reply(
             message,
             "".join(assistant_parts),
         )
+        try:
+            await compact_conversation(session_id, runner.provider)
+        except Exception:  # noqa: BLE001 - compaction must not fail a completed reply
+            logger.exception("Conversation compaction failed for %s", session_id)
     yield as_sse("done", {})
 
 
@@ -167,6 +175,10 @@ async def stream_agent_resume(
             original_user_message,
             "".join(assistant_parts),
         )
+        try:
+            await compact_conversation(session_id, runner.provider)
+        except Exception:  # noqa: BLE001 - compaction must not fail a completed reply
+            logger.exception("Conversation compaction failed for %s", session_id)
     yield as_sse("done", {})
 
 

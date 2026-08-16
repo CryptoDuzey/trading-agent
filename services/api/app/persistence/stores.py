@@ -4,7 +4,14 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app.agent.models import AgentEvent, ModelMessage, ToolCall, ToolPermission
+from app.agent.memory import SUMMARY_PREFIX
+from app.agent.models import (
+    AgentEvent,
+    ConversationCompactionBatch,
+    ModelMessage,
+    ToolCall,
+    ToolPermission,
+)
 from app.agent.permissions import ConfirmationTicket, RunCheckpoint
 from app.agent.traces import RunTrace
 from app.persistence.database import Database
@@ -55,10 +62,16 @@ class PostgresConversationStore:
 
     async def get_recent(self, session_id: str) -> list[ModelMessage]:
         async with self.database.sessions() as session:
+            conversation = await session.get(ConversationRow, session_id)
+            if conversation is None:
+                return []
             rows = (
                 await session.execute(
                     select(MessageRow)
-                    .where(MessageRow.session_id == session_id)
+                    .where(
+                        MessageRow.session_id == session_id,
+                        MessageRow.id > conversation.summary_through_message_id,
+                    )
                     .order_by(MessageRow.id.desc())
                     .limit(self.max_messages)
                 )
@@ -68,7 +81,84 @@ class PostgresConversationStore:
                 for row in rows
             ]
             messages.reverse()
+            if conversation.summary:
+                messages.insert(
+                    0,
+                    ModelMessage(
+                        role="assistant",
+                        content=SUMMARY_PREFIX + conversation.summary,
+                    ),
+                )
             return messages
+
+    async def get_compaction_batch(
+        self,
+        session_id: str,
+        *,
+        trigger_messages: int,
+        keep_recent_messages: int,
+    ) -> ConversationCompactionBatch | None:
+        async with self.database.sessions() as session:
+            conversation = await session.get(ConversationRow, session_id)
+            if conversation is None:
+                return None
+            rows = list(
+                (
+                    await session.execute(
+                        select(MessageRow)
+                        .where(
+                            MessageRow.session_id == session_id,
+                            MessageRow.id
+                            > conversation.summary_through_message_id,
+                        )
+                        .order_by(MessageRow.id)
+                    )
+                ).scalars()
+            )
+            if len(rows) < trigger_messages:
+                return None
+            compacted_rows = rows[: len(rows) - keep_recent_messages]
+            if not compacted_rows:
+                return None
+            return ConversationCompactionBatch(
+                previous_summary=conversation.summary,
+                previous_through_message_id=conversation.summary_through_message_id,
+                through_message_id=compacted_rows[-1].id,
+                messages=[
+                    ModelMessage(
+                        role=row.role,  # type: ignore[arg-type]
+                        content=row.content,
+                    )
+                    for row in compacted_rows
+                ],
+            )
+
+    async def save_compaction(
+        self,
+        session_id: str,
+        batch: ConversationCompactionBatch,
+        summary: str,
+    ) -> None:
+        if batch.through_message_id is None:
+            raise ValueError("PostgreSQL compaction requires a message cursor")
+        async with self.database.sessions.begin() as session:
+            conversation = (
+                await session.execute(
+                    select(ConversationRow)
+                    .where(ConversationRow.id == session_id)
+                    .with_for_update()
+                )
+            ).scalar_one_or_none()
+            if conversation is None:
+                raise KeyError(f"Conversation not found: {session_id}")
+            if (
+                conversation.summary_through_message_id
+                != (batch.previous_through_message_id or 0)
+            ):
+                raise RuntimeError("Conversation was compacted concurrently")
+            conversation.summary = summary
+            conversation.summary_through_message_id = batch.through_message_id
+            conversation.updated_at = datetime.now(UTC)
 
 
 class PostgresRunTraceStore:

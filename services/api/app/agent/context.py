@@ -1,4 +1,5 @@
 import json
+import math
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -11,6 +12,7 @@ from app.agent.models import ModelMessage, ToolExecutionResult
 class ContextPolicy(BaseModel):
     max_history_characters: int = Field(default=24_000, ge=1)
     max_history_messages: int = Field(default=20, ge=1)
+    max_history_tokens: int = Field(default=6_000, ge=1)
     max_tool_result_characters: int = Field(default=8_000, ge=200)
     market_data_max_age_seconds: int = Field(default=60, ge=1)
 
@@ -30,16 +32,21 @@ class ContextManager:
         selected: list[list[ModelMessage]] = []
         used_characters = 0
         used_messages = 0
+        used_tokens = 0
 
         for turn in reversed(turns):
             turn_characters = sum(len(message.content) for message in turn)
+            turn_tokens = sum(estimate_message_tokens(message) for message in turn)
             if used_characters + turn_characters > self.policy.max_history_characters:
                 break
             if used_messages + len(turn) > self.policy.max_history_messages:
                 break
+            if used_tokens + turn_tokens > self.policy.max_history_tokens:
+                break
             selected.append(turn)
             used_characters += turn_characters
             used_messages += len(turn)
+            used_tokens += turn_tokens
 
         return [
             message.model_copy(deep=True)
@@ -130,3 +137,19 @@ class ContextManager:
             ensure_ascii=False,
             separators=(",", ":"),
         )
+
+
+def estimate_text_tokens(text: str) -> int:
+    ascii_characters = sum(1 for character in text if ord(character) < 128)
+    non_ascii_characters = len(text) - ascii_characters
+    return math.ceil(ascii_characters / 4) + non_ascii_characters
+
+
+def estimate_message_tokens(message: ModelMessage) -> int:
+    tool_characters = sum(
+        len(call.name) + len(json.dumps(call.arguments, ensure_ascii=False))
+        for call in message.tool_calls
+    )
+    return 4 + estimate_text_tokens(message.content) + estimate_text_tokens(
+        "x" * tool_characters
+    )

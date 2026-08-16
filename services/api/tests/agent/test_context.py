@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 
-from app.agent.context import ContextManager, ContextPolicy
+from app.agent.context import ContextManager, ContextPolicy, estimate_text_tokens
 from app.agent.models import ModelMessage, ToolExecutionResult
 
 
@@ -58,3 +58,28 @@ def test_context_truncates_a_large_tool_result_as_valid_json() -> None:
     assert len(serialized) <= 240
     assert payload["context_meta"]["truncated"] is True
     assert payload["context_meta"]["original_characters"] > 2000
+
+
+def test_token_estimate_counts_cjk_more_precisely_than_ascii() -> None:
+    assert estimate_text_tokens("abcd") == 1
+    assert estimate_text_tokens("比特币") == 3
+
+
+def test_context_keeps_complete_turns_within_token_budget() -> None:
+    manager = ContextManager(
+        ContextPolicy(
+            max_history_characters=10_000,
+            max_history_messages=20,
+            max_history_tokens=14,
+        )
+    )
+    history = [
+        ModelMessage(role="user", content="an older and much longer question"),
+        ModelMessage(role="assistant", content="an older and much longer answer"),
+        ModelMessage(role="user", content="新问题"),
+        ModelMessage(role="assistant", content="新回答"),
+    ]
+
+    selected = manager.select_history(history)
+
+    assert [message.content for message in selected] == ["新问题", "新回答"]
