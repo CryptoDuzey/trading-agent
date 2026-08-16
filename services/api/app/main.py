@@ -328,3 +328,11 @@ async def list_orders(owner_id: str) -> list[object]:
 @app.get("/api/reviews")
 async def list_reviews(owner_id: str) -> list[object]:
     return await trading_store.list_reviews(owner_id)
+
+
+# 单容器部署时,由后端直接服务前端静态文件(仅当 STATIC_DIR 存在)。
+_static_dir = os.getenv("STATIC_DIR", "").strip()
+if _static_dir and os.path.isdir(_static_dir):
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="web")
