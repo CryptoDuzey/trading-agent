@@ -74,7 +74,7 @@ describe("Lobster Trading Agent chat", () => {
     });
   });
 
-  it("shows an expandable execution trace for agent tool calls", async () => {
+  it("shows the execution trajectory in the details panel", async () => {
     const stream = new ReadableStream({
       start(controller) {
         const encoder = new TextEncoder();
@@ -105,10 +105,9 @@ describe("Lobster Trading Agent chat", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "发送消息" }));
 
-    const traceSummary = await screen.findByText("执行过程 · 2 条记录");
-    fireEvent.click(traceSummary);
-
-    expect(screen.getByText("调用工具：get_market_quote")).toBeInTheDocument();
+    expect(
+      await screen.findByText("调用工具：get_market_quote"),
+    ).toBeInTheDocument();
     expect(screen.getByText("工具完成：get_market_quote")).toBeInTheDocument();
   });
 

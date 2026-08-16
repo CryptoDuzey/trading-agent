@@ -32,9 +32,18 @@ type AlertTask = {
   trigger_count: number;
 };
 
+type ToolInfo = { name: string; description: string };
+
 const SESSION_KEY = "trading-agent-session-id";
 const API_KEY = "trading-agent-api-key";
 const MODEL_KEY = "trading-agent-model";
+
+const MODEL_OPTIONS = [
+  { value: "deepseek-v4-flash", label: "V4 Flash" },
+  { value: "deepseek-v4-pro", label: "V4 Pro" },
+  { value: "deepseek-chat", label: "Chat" },
+  { value: "deepseek-reasoner", label: "Reasoner" },
+];
 
 const starterPrompts = [
   "分析 BTC 当前 15 分钟走势",
@@ -177,28 +186,11 @@ function App() {
   const [model, setModel] = useState(
     () => localStorage.getItem(MODEL_KEY) ?? "deepseek-v4-flash",
   );
-  const [toolsList, setToolsList] = useState<
-    { name: string; description: string }[]
-  >([]);
+  const [toolsList, setToolsList] = useState<ToolInfo[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
-
-  const openSettings = async () => {
-    setSettingsOpen(true);
-    setTaskPanelOpen(false);
-    if (toolsList.length === 0) {
-      setToolsLoading(true);
-      try {
-        const response = await fetch("/api/tools");
-        if (response.ok) {
-          setToolsList(await response.json());
-        }
-      } catch {
-        // 工具列表加载失败不阻塞设置面板
-      } finally {
-        setToolsLoading(false);
-      }
-    }
-  };
+  const [lastTrace, setLastTrace] = useState<AgentTraceEvent[]>([]);
+  const [detailTab, setDetailTab] = useState<"trace" | "tools">("trace");
+  const [detailsOpen, setDetailsOpen] = useState(true);
 
   const loadTasks = async () => {
     setTaskPanelOpen(true);
@@ -248,9 +240,25 @@ function App() {
     }
   };
 
+  const openSettings = async () => {
+    setSettingsOpen(true);
+    setTaskPanelOpen(false);
+    if (toolsList.length === 0) {
+      setToolsLoading(true);
+      try {
+        const response = await fetch("/api/tools");
+        if (response.ok) setToolsList(await response.json());
+      } catch {
+        // 工具列表加载失败不阻塞设置面板
+      } finally {
+        setToolsLoading(false);
+      }
+    }
+  };
+
   const saveSettings = () => {
     localStorage.setItem(API_KEY, apiKey.trim());
-    localStorage.setItem(MODEL_KEY, model.trim());
+    localStorage.setItem(MODEL_KEY, model);
     setSettingsOpen(false);
   };
 
@@ -274,6 +282,9 @@ function App() {
     setInput("");
     setError(null);
     setIsSending(true);
+    setDetailTab("trace");
+    setDetailsOpen(true);
+    setLastTrace([]);
 
     try {
       const response = await fetch("/api/chat/stream", {
@@ -283,7 +294,7 @@ function App() {
           message,
           session_id: sessionId,
           api_key: apiKey.trim() || undefined,
-          model: model.trim() || undefined,
+          model: model || undefined,
         }),
       });
 
@@ -299,6 +310,7 @@ function App() {
           );
         },
         (traceEvent) => {
+          setLastTrace((current) => [...current, traceEvent]);
           setMessages((current) =>
             current.map((item) =>
               item.id === assistantId
@@ -325,8 +337,8 @@ function App() {
   const useStarterPrompt = (prompt: string) => setInput(prompt);
 
   return (
-    <main className="workspace">
-      <aside className="context-panel">
+    <main className={`workspace${detailsOpen ? "" : " details-closed"}`}>
+      <aside className="sidebar">
         <div className="brand-row">
           <div className="brand-mark" aria-hidden="true">
             TA
@@ -339,19 +351,21 @@ function App() {
           </div>
         </div>
 
-        <section className="market-status" aria-label="系统状态">
+        <section className="workspace-list">
+          <p className="overline">WORKSPACE</p>
+          <button className="workspace-item active" type="button">
+            <span className="ws-dot" />
+            交易研究
+          </button>
+        </section>
+
+        <section className="market-status">
           <div className="status-heading">
             <span className="live-dot" />
             <span>分析服务在线</span>
           </div>
           <p>Binance · 只读研究模式</p>
         </section>
-
-        <div className="context-copy">
-          <span>当前工作区</span>
-          <strong>交易研究</strong>
-          <p>行情 · 持仓 · 风险 · 回测 · 复盘</p>
-        </div>
 
         <footer>
           <span className="safety-badge">真实交易已锁定</span>
@@ -366,6 +380,22 @@ function App() {
             <h2>今天想研究什么？</h2>
           </div>
           <div className="header-actions">
+            <select
+              className="model-select"
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              aria-label="选择模型"
+            >
+              {MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              {model &&
+                !MODEL_OPTIONS.some((option) => option.value === model) && (
+                  <option value={model}>{model}</option>
+                )}
+            </select>
             <button
               className="icon-button"
               type="button"
@@ -466,21 +496,16 @@ function App() {
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                 >
-                  <option value="deepseek-v4-flash">DeepSeek V4 Flash（快）</option>
-                  <option value="deepseek-v4-pro">DeepSeek V4 Pro（强）</option>
-                  <option value="deepseek-chat">DeepSeek Chat</option>
-                  <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                  {MODEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                   {model &&
-                    ![
-                      "deepseek-v4-flash",
-                      "deepseek-v4-pro",
-                      "deepseek-chat",
-                      "deepseek-reasoner",
-                    ].includes(model) && (
-                      <option value={model}>{model}（自定义）</option>
+                    !MODEL_OPTIONS.some((option) => option.value === model) && (
+                      <option value={model}>{model}</option>
                     )}
                 </select>
-                <p className="field-hint">选择后保存即可，下次提问时生效。</p>
               </div>
               <button className="primary-button" type="button" onClick={saveSettings}>
                 保存设置
@@ -488,21 +513,6 @@ function App() {
               <p className="settings-note">
                 没有密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
               </p>
-              <div className="field tools-block">
-                <label>可用工具（{toolsList.length}）</label>
-                {toolsLoading ? (
-                  <p className="field-hint">正在加载工具列表…</p>
-                ) : (
-                  <ul className="tools-list">
-                    {toolsList.map((tool) => (
-                      <li key={tool.name}>
-                        <strong>{tool.name}</strong>
-                        <span>{tool.description}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
             </div>
           </aside>
         )}
@@ -517,29 +527,6 @@ function App() {
                 <div className="message-content">
                   {message.content || <span className="typing">正在思考…</span>}
                 </div>
-                {message.trace && message.trace.length > 0 && (
-                  <details className="execution-trace">
-                    <summary>执行过程 · {message.trace.length} 条记录</summary>
-                    <ol>
-                      {message.trace.map((traceEvent) => {
-                        const evidence = extractEvidence(traceEvent);
-                        return (
-                          <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
-                            <span>{describeTraceEvent(traceEvent)}</span>
-                            <small>步骤 {traceEvent.step}</small>
-                            {evidence.length > 0 && (
-                              <ul className="trace-evidence">
-                                {evidence.map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </details>
-                )}
               </div>
             </article>
           ))}
@@ -581,6 +568,80 @@ function App() {
           <p className="composer-hint">点击箭头发送 · 首月不执行真实交易</p>
         </div>
       </section>
+
+      <aside className="details-panel" aria-label="详情面板">
+        <header className="details-header">
+          <div className="details-tabs">
+            <button
+              type="button"
+              className={detailTab === "trace" ? "active" : ""}
+              onClick={() => setDetailTab("trace")}
+            >
+              执行
+            </button>
+            <button
+              type="button"
+              className={detailTab === "tools" ? "active" : ""}
+              onClick={() => {
+                setDetailTab("tools");
+                if (toolsList.length === 0) void openSettings();
+              }}
+            >
+              工具
+            </button>
+          </div>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="关闭详情面板"
+            onClick={() => setDetailsOpen(false)}
+          >
+            ×
+          </button>
+        </header>
+
+        {detailTab === "trace" ? (
+          <div className="trajectory">
+            {lastTrace.length === 0 ? (
+              <p className="task-empty">发送一条消息后，这里会展示 Agent 的执行过程。</p>
+            ) : (
+              <ol className="trajectory-list">
+                {lastTrace.map((traceEvent) => {
+                  const evidence = extractEvidence(traceEvent);
+                  return (
+                    <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
+                      <span>{describeTraceEvent(traceEvent)}</span>
+                      <small>步骤 {traceEvent.step}</small>
+                      {evidence.length > 0 && (
+                        <ul className="trace-evidence">
+                          {evidence.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        ) : (
+          <div className="tools-catalogue">
+            {toolsLoading ? (
+              <p className="task-empty">正在加载工具列表…</p>
+            ) : (
+              <ul className="tools-list">
+                {toolsList.map((tool) => (
+                  <li key={tool.name}>
+                    <strong>{tool.name}</strong>
+                    <span>{tool.description}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </aside>
     </main>
   );
 }
