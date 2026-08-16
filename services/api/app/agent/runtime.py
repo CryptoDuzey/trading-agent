@@ -20,6 +20,8 @@ from app.monitoring.tools import register_monitoring_tools
 from app.persistence.database import Database
 from app.portfolio.store import InMemoryPositionStore, PostgresPositionStore
 from app.portfolio.tools import register_portfolio_tools
+from app.trading.store import InMemoryTradingStore, PostgresTradingStore
+from app.trading.tools import register_trading_tools
 from app.persistence.stores import (
     PostgresCheckpointStore,
     PostgresConfirmationStore,
@@ -46,6 +48,7 @@ class StoreBundle:
     checkpoints: InMemoryCheckpointStore | PostgresCheckpointStore
     alerts: InMemoryAlertStore | PostgresAlertStore
     positions: InMemoryPositionStore | PostgresPositionStore
+    trading: InMemoryTradingStore | PostgresTradingStore
 
 
 def build_store_bundle(database_url: str) -> StoreBundle:
@@ -58,6 +61,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
             checkpoints=InMemoryCheckpointStore(),
             alerts=InMemoryAlertStore(),
             positions=InMemoryPositionStore(),
+            trading=InMemoryTradingStore(),
         )
 
     database = Database(database_url.strip())
@@ -69,6 +73,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
         checkpoints=PostgresCheckpointStore(database),
         alerts=PostgresAlertStore(database),
         positions=PostgresPositionStore(database),
+        trading=PostgresTradingStore(database),
     )
 
 
@@ -80,6 +85,7 @@ confirmation_store = stores.confirmations
 checkpoint_store = stores.checkpoints
 alert_store = stores.alerts
 position_store = stores.positions
+trading_store = stores.trading
 feishu_webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "").strip()
 alert_monitor = AlertMonitor(
     store=alert_store,
@@ -130,6 +136,12 @@ def build_agent_runner(owner_id: str = "default") -> AgentRunner:
     register_portfolio_tools(
         tools,
         position_store,
+        market_client,
+        owner_id=owner_id,
+    )
+    register_trading_tools(
+        tools,
+        trading_store,
         market_client,
         owner_id=owner_id,
     )

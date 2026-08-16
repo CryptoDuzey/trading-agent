@@ -336,3 +336,114 @@ class PositionRow(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class TradingPlanRow(Base):
+    __tablename__ = "trading_plans"
+    __table_args__ = (
+        CheckConstraint(
+            "market in ('spot', 'usdm', 'coinm', 'options')",
+            name="trading_plans_market_check",
+        ),
+        CheckConstraint(
+            "side in ('long', 'short')",
+            name="trading_plans_side_check",
+        ),
+        CheckConstraint(
+            "status in ('planned', 'executed', 'cancelled')",
+            name="trading_plans_status_check",
+        ),
+        Index("trading_plans_owner_created_idx", "owner_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(Text, nullable=False)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    side: Mapped[str] = mapped_column(Text, nullable=False)
+    entry_low: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    entry_high: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    stop_loss: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    take_profit: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    position_size: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    risk_note: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="planned")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class SimulatedOrderRow(Base):
+    __tablename__ = "simulated_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "market in ('spot', 'usdm', 'coinm', 'options')",
+            name="simulated_orders_market_check",
+        ),
+        CheckConstraint(
+            "side in ('long', 'short')",
+            name="simulated_orders_side_check",
+        ),
+        CheckConstraint(
+            "order_type in ('market', 'limit')",
+            name="simulated_orders_order_type_check",
+        ),
+        CheckConstraint(
+            "status in ('filled', 'cancelled')",
+            name="simulated_orders_status_check",
+        ),
+        Index("simulated_orders_owner_created_idx", "owner_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(Text, nullable=False)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    side: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    order_type: Mapped[str] = mapped_column(Text, nullable=False)
+    limit_price: Mapped[Any] = mapped_column(Numeric(38, 18))
+    plan_id: Mapped[str | None] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    filled_price: Mapped[Any] = mapped_column(Numeric(38, 18))
+    filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TradeReviewRow(Base):
+    __tablename__ = "trade_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "market in ('spot', 'usdm', 'coinm', 'options')",
+            name="trade_reviews_market_check",
+        ),
+        CheckConstraint(
+            "side in ('long', 'short')",
+            name="trade_reviews_side_check",
+        ),
+        Index("trade_reviews_owner_created_idx", "owner_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(Text, nullable=False)
+    market: Mapped[str] = mapped_column(Text, nullable=False)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    side: Mapped[str] = mapped_column(Text, nullable=False)
+    entry_price: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    exit_price: Mapped[Any] = mapped_column(Numeric(38, 18))
+    quantity: Mapped[Any] = mapped_column(Numeric(38, 18), nullable=False)
+    entry_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    outcome_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    realized_pnl: Mapped[Any] = mapped_column(Numeric(38, 18))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
