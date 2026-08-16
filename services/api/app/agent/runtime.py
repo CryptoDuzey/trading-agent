@@ -15,6 +15,8 @@ from app.agent.providers.deepseek import DeepSeekProvider
 from app.agent.tools import ToolRegistry
 from app.agent.traces import InMemoryRunTraceStore
 from app.backtest.tools import register_backtest_tools
+from app.notes.store import InMemoryNoteStore, PostgresNoteStore
+from app.notes.tools import register_note_tools
 from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.monitoring.tools import register_monitoring_tools
@@ -50,6 +52,7 @@ class StoreBundle:
     alerts: InMemoryAlertStore | PostgresAlertStore
     positions: InMemoryPositionStore | PostgresPositionStore
     trading: InMemoryTradingStore | PostgresTradingStore
+    notes: InMemoryNoteStore | PostgresNoteStore
 
 
 def build_store_bundle(database_url: str) -> StoreBundle:
@@ -63,6 +66,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
             alerts=InMemoryAlertStore(),
             positions=InMemoryPositionStore(),
             trading=InMemoryTradingStore(),
+            notes=InMemoryNoteStore(),
         )
 
     database = Database(database_url.strip())
@@ -75,6 +79,7 @@ def build_store_bundle(database_url: str) -> StoreBundle:
         alerts=PostgresAlertStore(database),
         positions=PostgresPositionStore(database),
         trading=PostgresTradingStore(database),
+        notes=PostgresNoteStore(database),
     )
 
 
@@ -87,6 +92,7 @@ checkpoint_store = stores.checkpoints
 alert_store = stores.alerts
 position_store = stores.positions
 trading_store = stores.trading
+note_store = stores.notes
 feishu_webhook_url = os.getenv("FEISHU_WEBHOOK_URL", "").strip()
 alert_monitor = AlertMonitor(
     store=alert_store,
@@ -147,6 +153,7 @@ def build_agent_runner(owner_id: str = "default") -> AgentRunner:
         market_client,
         owner_id=owner_id,
     )
+    register_note_tools(tools, note_store, owner_id=owner_id)
     return AgentRunner(
         provider=provider,
         tools=tools,
