@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import "./styles.css";
+import KlineChart, { type Candle } from "./KlineChart";
 
 type ChatMessage = {
   id: string;
@@ -173,6 +174,16 @@ function extractEvidence(event: AgentTraceEvent): string[] {
     evidence.push(`限制说明：${output.limitation}`);
   }
   return evidence;
+}
+
+function extractKlines(trace: AgentTraceEvent[]): Candle[] {
+  const klineEvent = trace.find(
+    (event) =>
+      event.type === "tool_finished" && event.data.name === "get_klines",
+  );
+  if (!klineEvent) return [];
+  const output = (klineEvent.data as { output?: { candles?: Candle[] } }).output;
+  return output?.candles ?? [];
 }
 
 function getOrCreateSessionId() {
@@ -646,6 +657,11 @@ function App() {
                   {message.content || <span className="typing">正在思考…</span>}
                 </div>
               )}
+              {message.role === "assistant" &&
+                message.trace &&
+                extractKlines(message.trace).length > 0 && (
+                  <KlineChart candles={extractKlines(message.trace)} />
+                )}
               {message.trace && message.trace.length > 0 && (
                 <details className="execution-trace">
                   <summary>执行过程 · {message.trace.length} 条</summary>
