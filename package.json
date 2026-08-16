@@ -1,14 +1,14 @@
 {
-  "name": "lobster-trading-agent",
+  "name": "trading-agent",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace @lobster/web",
-    "build:web": "npm run build --workspace @lobster/web",
-    "test:web": "npm run test --workspace @lobster/web"
+    "dev:web": "npm run dev --workspace @ta/web",
+    "build:web": "npm run build --workspace @ta/web",
+    "test:web": "npm run test --workspace @ta/web"
   }
 }
 

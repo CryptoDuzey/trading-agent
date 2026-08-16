@@ -1,7 +1,7 @@
 [project]
-name = "lobster-api"
+name = "trading-agent-api"
 version = "0.1.0"
-description = "Lobster Trading Agent API"
+description = "Trading Agent API"
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "alembic>=1.15,<2",

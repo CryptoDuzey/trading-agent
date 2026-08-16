@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class HealthResponse(TypedDict):
     status: Literal["ok"]
-    service: Literal["lobster-api"]
+    service: Literal["trading-agent"]
 
 
 @asynccontextmanager
@@ -59,7 +59,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             await database.dispose()
 
 
-app = FastAPI(title="Lobster Trading Agent API", lifespan=lifespan)
+app = FastAPI(title="Trading Agent API", lifespan=lifespan)
 
 
 class ChatRequest(BaseModel):
@@ -196,7 +196,7 @@ async def stream_agent_resume(
 async def health() -> HealthResponse:
     return {
         "status": "ok",
-        "service": "lobster-api",
+        "service": "trading-agent",
     }
 
 

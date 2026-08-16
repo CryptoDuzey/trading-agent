@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 from datetime import UTC, datetime
 
 import httpx
@@ -137,7 +137,7 @@ def test_feishu_notifier_posts_a_readable_alert_message() -> None:
 
     assert len(requests) == 1
     body = requests[0].content.decode("utf-8")
-    assert "Lobster 交易提醒" in body
+    assert "Trading Agent 交易提醒" in body
     assert "BTCUSDT" in body
     assert "64900" in body
 

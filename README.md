@@ -1,4 +1,4 @@
-# Trading Agent
+﻿# Trading Agent
 
 面向 Crypto 交易研究的对话式 Agent。当前版本具备自研 Mini Harness、DeepSeek V4 模型适配、工具注册与执行、短期会话记忆、运行事件流，以及 Binance 多市场公开行情工具。
 
@@ -78,7 +78,7 @@ uv run uvicorn app.main:app --reload
 ```powershell
 docker compose up -d postgres
 cd services/api
-$env:DATABASE_URL="postgresql+asyncpg://lobster:local-development-only@localhost:5432/lobster"
+$env:DATABASE_URL="postgresql+asyncpg://trading:local-development-only@localhost:5432/trading"
 uv run alembic upgrade head
 ```
 

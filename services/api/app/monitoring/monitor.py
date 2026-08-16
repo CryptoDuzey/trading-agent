@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Protocol
@@ -47,7 +47,7 @@ class FeishuNotifier:
         client = self.client or httpx.AsyncClient()
         owns_client = self.client is None
         text = (
-            "Lobster 交易提醒\n"
+            "Trading Agent 交易提醒\n"
             f"市场：{task.market}\n"
             f"标的：{task.symbol}\n"
             f"原因：{trigger.reason}\n"

@@ -1,1 +1,1 @@
-"""Lobster Trading Agent API package."""
+﻿"""Trading Agent API package."""

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+﻿import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -8,7 +8,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe("Lobster Trading Agent chat", () => {
+describe("Trading Agent chat", () => {
   it("does not allow an empty message to be sent", () => {
     render(<App />);
 
