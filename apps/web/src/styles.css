@@ -363,7 +363,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .kline-chart {
   width: 100%;
   max-width: 640px;
-  height: 260px;
+  height: 340px;
   margin-top: 12px;
   border: 1px solid var(--border-l1);
   border-radius: 8px;

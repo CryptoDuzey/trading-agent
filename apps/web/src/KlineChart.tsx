@@ -22,6 +22,34 @@ export type Candle = {
   volume: string;
 };
 
+function calcRsi(closes: number[], period = 14): (number | null)[] {
+  const rsi: (number | null)[] = [];
+  let gainSum = 0;
+  let lossSum = 0;
+  for (let i = 1; i < closes.length; i++) {
+    const change = closes[i] - closes[i - 1];
+    const gain = Math.max(change, 0);
+    const loss = Math.max(-change, 0);
+    if (i <= period) {
+      gainSum += gain;
+      lossSum += loss;
+      if (i === period) {
+        gainSum /= period;
+        lossSum /= period;
+        rsi.push(lossSum === 0 ? 100 : 100 - 100 / (1 + gainSum / lossSum));
+      } else {
+        rsi.push(null);
+      }
+    } else {
+      gainSum = (gainSum * (period - 1) + gain) / period;
+      lossSum = (lossSum * (period - 1) + loss) / period;
+      rsi.push(lossSum === 0 ? 100 : 100 - 100 / (1 + gainSum / lossSum));
+    }
+  }
+  rsi.unshift(null);
+  return rsi;
+}
+
 function KlineChart({ candles }: { candles: Candle[] }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -51,7 +79,7 @@ function KlineChart({ candles }: { candles: Candle[] }) {
         (window.reduce((sum, value) => sum + value, 0) / 20).toFixed(4),
       );
     });
-    const volumes = candles.map((candle, index) => ({
+    const volumes = candles.map((candle) => ({
       value: Number(candle.volume),
       itemStyle: {
         color:
@@ -60,13 +88,15 @@ function KlineChart({ candles }: { candles: Candle[] }) {
             : "rgba(239, 68, 68, 0.6)",
       },
     }));
+    const rsi = calcRsi(closes, 14);
 
     chart.setOption({
       animation: false,
       backgroundColor: "transparent",
       grid: [
-        { left: 52, right: 12, top: 10, height: "58%" },
-        { left: 52, right: 12, top: "76%", height: "16%" },
+        { left: 52, right: 12, top: 10, height: "48%" },
+        { left: 52, right: 12, top: "62%", height: "13%" },
+        { left: 52, right: 12, top: "79%", height: "15%" },
       ],
       xAxis: [
         {
@@ -80,6 +110,14 @@ function KlineChart({ candles }: { candles: Candle[] }) {
           type: "category",
           data: dates,
           gridIndex: 1,
+          axisLabel: { show: false },
+          axisLine: { show: false },
+          axisTick: { show: false },
+        },
+        {
+          type: "category",
+          data: dates,
+          gridIndex: 2,
           axisLabel: { show: false },
           axisLine: { show: false },
           axisTick: { show: false },
@@ -99,6 +137,14 @@ function KlineChart({ candles }: { candles: Candle[] }) {
           axisLine: { show: false },
           axisTick: { show: false },
           splitLine: { show: false },
+        },
+        {
+          gridIndex: 2,
+          min: 0,
+          max: 100,
+          axisLabel: { color: "#9aa2ad", fontSize: 9 },
+          axisLine: { show: false },
+          splitLine: { lineStyle: { color: "#f1f3f5" } },
         },
       ],
       series: [
@@ -124,6 +170,15 @@ function KlineChart({ candles }: { candles: Candle[] }) {
           data: volumes,
           xAxisIndex: 1,
           yAxisIndex: 1,
+        },
+        {
+          type: "line",
+          data: rsi,
+          showSymbol: false,
+          xAxisIndex: 2,
+          yAxisIndex: 2,
+          lineStyle: { width: 1, color: "#b7791f" },
+          name: "RSI14",
         },
       ],
     });
