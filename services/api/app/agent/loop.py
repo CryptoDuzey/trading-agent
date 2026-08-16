@@ -120,10 +120,14 @@ class AgentRunner:
         for step in range(start_step, self.max_steps + 1):
             yield self._event(state, "model_started", step=step)
             try:
-                turn = await self.provider.complete(
-                    messages=state.messages,
-                    tools=self.tools.definitions(),
-                )
+                turn: AssistantTurn | None = None
+                async for item in self._complete_step(state, step):
+                    if isinstance(item, AssistantTurn):
+                        turn = item
+                    else:
+                        yield item
+                if turn is None:
+                    turn = AssistantTurn()
             except Exception as error:  # noqa: BLE001 - provider boundary
                 yield self._event(
                     state,
@@ -163,12 +167,13 @@ class AgentRunner:
                 )
                 return
 
-            yield self._event(
-                state,
-                "answer_delta",
-                step=step,
-                data={"content": turn.content},
-            )
+            if not hasattr(self.provider, "stream"):
+                yield self._event(
+                    state,
+                    "answer_delta",
+                    step=step,
+                    data={"content": turn.content},
+                )
             yield self._event(state, "run_completed", step=step)
             return
 
@@ -181,6 +186,43 @@ class AgentRunner:
                 "message": "Agent stopped before reaching a final answer",
             },
         )
+
+    async def _complete_step(
+        self,
+        state: _RunState,
+        step: int,
+    ) -> AsyncIterator[AgentEvent | AssistantTurn]:
+        """Call the model, streaming token deltas as answer events when possible."""
+        stream = getattr(self.provider, "stream", None)
+        if stream is None:
+            yield await self.provider.complete(
+                messages=state.messages,
+                tools=self.tools.definitions(),
+            )
+            return
+
+        content_parts: list[str] = []
+        async for chunk in stream(
+            messages=state.messages,
+            tools=self.tools.definitions(),
+        ):
+            if chunk.content_delta:
+                content_parts.append(chunk.content_delta)
+                yield self._event(
+                    state,
+                    "answer_delta",
+                    step=step,
+                    data={"content": chunk.content_delta},
+                )
+            if chunk.final_turn is not None:
+                turn = chunk.final_turn
+                if not turn.content and content_parts:
+                    turn = turn.model_copy(
+                        update={"content": "".join(content_parts)}
+                    )
+                yield turn
+                return
+        yield AssistantTurn(content="".join(content_parts))
 
     async def _process_tool_calls(
         self,

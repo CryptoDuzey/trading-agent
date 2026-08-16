@@ -1,4 +1,5 @@
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -6,6 +7,7 @@ import httpx
 from app.agent.models import (
     AssistantTurn,
     ModelMessage,
+    StreamChunk,
     TokenUsage,
     ToolCall,
 )
@@ -59,6 +61,90 @@ class DeepSeekProvider:
             )
             response.raise_for_status()
             return self._parse_response(response.json())
+        finally:
+            if owns_client:
+                await client.aclose()
+
+    async def stream(
+        self,
+        messages: list[ModelMessage],
+        tools: list[dict[str, object]],
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream the completion token by token, then emit the assembled turn."""
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [self._message_payload(message) for message in messages],
+            "stream": True,
+        }
+        if tools:
+            payload["tools"] = [
+                {"type": "function", "function": tool} for tool in tools
+            ]
+            payload["tool_choice"] = "auto"
+
+        client = self._client or httpx.AsyncClient()
+        owns_client = self._client is None
+        try:
+            async with client.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=self.timeout_seconds,
+            ) as response:
+                response.raise_for_status()
+                content_parts: list[str] = []
+                tool_call_slots: dict[int, dict[str, str]] = {}
+                async for line in response.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    chunk = json.loads(data)
+                    choices = chunk.get("choices") or []
+                    delta = choices[0].get("delta") or {} if choices else {}
+                    if delta.get("content"):
+                        content_parts.append(delta["content"])
+                        yield StreamChunk(content_delta=delta["content"])
+                    for raw_call in delta.get("tool_calls") or []:
+                        index = raw_call.get("index", 0)
+                        slot = tool_call_slots.setdefault(
+                            index, {"id": "", "name": "", "arguments": ""}
+                        )
+                        if raw_call.get("id"):
+                            slot["id"] = raw_call["id"]
+                        function = raw_call.get("function") or {}
+                        if function.get("name"):
+                            slot["name"] += function["name"]
+                        if function.get("arguments"):
+                            slot["arguments"] += function["arguments"]
+
+                tool_calls: list[ToolCall] = []
+                for index in sorted(tool_call_slots):
+                    slot = tool_call_slots[index]
+                    if not slot["name"]:
+                        continue
+                    try:
+                        arguments = json.loads(slot["arguments"] or "{}")
+                    except json.JSONDecodeError:
+                        arguments = {}
+                    tool_calls.append(
+                        ToolCall(
+                            id=slot["id"] or f"call-{index}",
+                            name=slot["name"],
+                            arguments=arguments,
+                        )
+                    )
+                yield StreamChunk(
+                    final_turn=AssistantTurn(
+                        content="".join(content_parts),
+                        tool_calls=tool_calls,
+                    )
+                )
         finally:
             if owns_client:
                 await client.aclose()

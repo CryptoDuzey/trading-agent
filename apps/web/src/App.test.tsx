@@ -70,6 +70,7 @@ describe("Lobster Trading Agent chat", () => {
     expect(requestBody).toEqual({
       message: "分析 BTC",
       session_id: expect.any(String),
+      model: "deepseek-v4-flash",
     });
   });
 

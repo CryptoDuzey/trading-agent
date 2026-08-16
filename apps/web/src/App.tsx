@@ -174,7 +174,31 @@ function App() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY) ?? "");
-  const [model, setModel] = useState(() => localStorage.getItem(MODEL_KEY) ?? "");
+  const [model, setModel] = useState(
+    () => localStorage.getItem(MODEL_KEY) ?? "deepseek-v4-flash",
+  );
+  const [toolsList, setToolsList] = useState<
+    { name: string; description: string }[]
+  >([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
+
+  const openSettings = async () => {
+    setSettingsOpen(true);
+    setTaskPanelOpen(false);
+    if (toolsList.length === 0) {
+      setToolsLoading(true);
+      try {
+        const response = await fetch("/api/tools");
+        if (response.ok) {
+          setToolsList(await response.json());
+        }
+      } catch {
+        // 工具列表加载失败不阻塞设置面板
+      } finally {
+        setToolsLoading(false);
+      }
+    }
+  };
 
   const loadTasks = async () => {
     setTaskPanelOpen(true);
@@ -355,8 +379,11 @@ function App() {
               type="button"
               aria-label="打开设置"
               onClick={() => {
-                setSettingsOpen((open) => !open);
-                setTaskPanelOpen(false);
+                if (settingsOpen) {
+                  setSettingsOpen(false);
+                } else {
+                  void openSettings();
+                }
               }}
             >
               设置
@@ -434,15 +461,26 @@ function App() {
               </div>
               <div className="field">
                 <label htmlFor="model-name">模型</label>
-                <input
+                <select
                   id="model-name"
-                  type="text"
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
-                  placeholder="deepseek-v4-flash"
-                  autoComplete="off"
-                />
-                <p className="field-hint">留空则使用默认模型。</p>
+                >
+                  <option value="deepseek-v4-flash">DeepSeek V4 Flash（快）</option>
+                  <option value="deepseek-v4-pro">DeepSeek V4 Pro（强）</option>
+                  <option value="deepseek-chat">DeepSeek Chat</option>
+                  <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                  {model &&
+                    ![
+                      "deepseek-v4-flash",
+                      "deepseek-v4-pro",
+                      "deepseek-chat",
+                      "deepseek-reasoner",
+                    ].includes(model) && (
+                      <option value={model}>{model}（自定义）</option>
+                    )}
+                </select>
+                <p className="field-hint">选择后保存即可，下次提问时生效。</p>
               </div>
               <button className="primary-button" type="button" onClick={saveSettings}>
                 保存设置
@@ -450,6 +488,21 @@ function App() {
               <p className="settings-note">
                 没有密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
               </p>
+              <div className="field tools-block">
+                <label>可用工具（{toolsList.length}）</label>
+                {toolsLoading ? (
+                  <p className="field-hint">正在加载工具列表…</p>
+                ) : (
+                  <ul className="tools-list">
+                    {toolsList.map((tool) => (
+                      <li key={tool.name}>
+                        <strong>{tool.name}</strong>
+                        <span>{tool.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </aside>
         )}

@@ -39,6 +39,13 @@ class AssistantTurn(BaseModel):
     usage: TokenUsage | None = None
 
 
+class StreamChunk(BaseModel):
+    """One chunk from a streaming model: a content delta and/or the final turn."""
+
+    content_delta: str = ""
+    final_turn: AssistantTurn | None = None
+
+
 class ToolError(BaseModel):
     code: Literal[
         "unknown_tool",

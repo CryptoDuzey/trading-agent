@@ -249,7 +249,45 @@ button:focus-visible, textarea:focus-visible, input:focus-visible {
   font-size: .8rem;
 }
 .field input::placeholder { color: var(--text-faint); }
+.field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: .8rem;
+}
 .field-hint { margin: 6px 0 0; color: var(--text-faint); font-size: .68rem; line-height: 1.5; }
+.tools-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.tools-list {
+  max-height: 260px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.tools-list li {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+.tools-list li + li { margin-top: 6px; }
+.tools-list strong {
+  display: block;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 500;
+}
+.tools-list span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-dim);
+  font-size: .68rem;
+  line-height: 1.5;
+}
 .primary-button {
   width: 100%;
   padding: 11px;

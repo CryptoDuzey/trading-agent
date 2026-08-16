@@ -198,6 +198,15 @@ async def health() -> HealthResponse:
     }
 
 
+@app.get("/api/tools")
+async def list_tools() -> list[dict[str, str]]:
+    runner = build_agent_runner()
+    return [
+        {"name": str(definition["name"]), "description": str(definition["description"])}
+        for definition in runner.tools.definitions()
+    ]
+
+
 @app.get("/api/runs/{run_id}")
 async def get_run_trace(run_id: str) -> RunTrace:
     trace = await trace_store.get(run_id)
