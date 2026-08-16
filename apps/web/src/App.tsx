@@ -104,6 +104,45 @@ function describeTraceEvent(event: AgentTraceEvent) {
   return labels[event.type] ?? event.type;
 }
 
+type ToolOutput = {
+  source?: unknown;
+  candle_count?: unknown;
+  scanned_count?: unknown;
+  total_samples?: unknown;
+  observed_at?: unknown;
+  limitation?: unknown;
+  positions?: unknown;
+  plans?: unknown;
+  orders?: unknown;
+  notes?: unknown;
+  events?: unknown;
+  items?: unknown;
+};
+
+function extractEvidence(event: AgentTraceEvent): string[] {
+  if (event.type !== "tool_finished") return [];
+  const output = (event.data as { output?: ToolOutput }).output;
+  if (!output || typeof output !== "object") return [];
+
+  const evidence: string[] = [];
+  if (typeof output.source === "string") evidence.push(`数据来源：${output.source}`);
+  if (typeof output.candle_count === "number") evidence.push(`使用 ${output.candle_count} 根 K 线`);
+  if (typeof output.scanned_count === "number") evidence.push(`扫描 ${output.scanned_count} 个标的`);
+  if (typeof output.total_samples === "number") evidence.push(`历史样本 ${output.total_samples} 个`);
+  if (typeof output.observed_at === "string") {
+    evidence.push(`观测时间：${new Date(output.observed_at).toLocaleString()}`);
+  }
+  for (const key of ["positions", "plans", "orders", "notes", "events", "items"] as const) {
+    if (Array.isArray(output[key])) {
+      evidence.push(`${key === "positions" ? "持仓" : key} ${output[key].length} 条`);
+    }
+  }
+  if (typeof output.limitation === "string" && output.limitation) {
+    evidence.push(`限制说明：${output.limitation}`);
+  }
+  return evidence;
+}
+
 function getOrCreateSessionId() {
   const stored = localStorage.getItem("lobster-session-id");
   if (stored) return stored;
@@ -347,12 +386,22 @@ function App() {
                   <details className="execution-trace">
                     <summary>执行过程 · {message.trace.length} 条记录</summary>
                     <ol>
-                      {message.trace.map((traceEvent) => (
-                        <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
-                          <span>{describeTraceEvent(traceEvent)}</span>
-                          <small>步骤 {traceEvent.step}</small>
-                        </li>
-                      ))}
+                      {message.trace.map((traceEvent) => {
+                        const evidence = extractEvidence(traceEvent);
+                        return (
+                          <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
+                            <span>{describeTraceEvent(traceEvent)}</span>
+                            <small>步骤 {traceEvent.step}</small>
+                            {evidence.length > 0 && (
+                              <ul className="trace-evidence">
+                                {evidence.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ol>
                   </details>
                 )}

@@ -219,6 +219,7 @@ h1, h2, p { margin-top: 0; }
 .execution-trace ol { margin: 0; padding: 0 0 5px; list-style: none; }
 .execution-trace li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20px;
   padding: 7px 10px;
@@ -228,6 +229,21 @@ h1, h2, p { margin-top: 0; }
 .execution-trace li + li { margin-top: 3px; }
 .execution-trace li span { color: #4f5652; }
 .execution-trace small { flex: 0 0 auto; color: #929893; }
+.execution-trace .trace-evidence {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #929893;
+  font-size: .68rem;
+}
+.execution-trace .trace-evidence li {
+  display: block;
+  margin-top: 2px;
+  padding: 2px 0;
+  border-left: 0;
+  background: none;
+}
 
 .starter-grid {
   display: grid;
