@@ -17,6 +17,8 @@ from app.agent.traces import InMemoryRunTraceStore
 from app.backtest.tools import register_backtest_tools
 from app.notes.store import InMemoryNoteStore, PostgresNoteStore
 from app.notes.tools import register_note_tools
+from app.news.source import UnconfiguredNewsSource
+from app.news.tools import register_news_tools
 from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.monitoring.tools import register_monitoring_tools
@@ -154,6 +156,7 @@ def build_agent_runner(owner_id: str = "default") -> AgentRunner:
         owner_id=owner_id,
     )
     register_note_tools(tools, note_store, owner_id=owner_id)
+    register_news_tools(tools, UnconfiguredNewsSource())
     return AgentRunner(
         provider=provider,
         tools=tools,
