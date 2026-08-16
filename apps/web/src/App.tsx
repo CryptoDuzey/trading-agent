@@ -123,62 +123,6 @@ async function readEventStream(
   }
 }
 
-function describeTraceEvent(event: AgentTraceEvent) {
-  const toolName = typeof event.data.name === "string" ? event.data.name : "未知工具";
-  const labels: Record<string, string> = {
-    run_started: "开始理解任务",
-    model_started: `模型判断 · 第 ${event.step} 步`,
-    tool_started: `调用工具：${toolName}`,
-    tool_finished: `工具完成：${toolName}`,
-    confirmation_required: `等待确认：${toolName}`,
-    run_paused: "任务已暂停",
-    run_resumed: "任务已恢复",
-    answer_delta: "整理最终回答",
-    run_completed: "任务完成",
-    run_failed: "任务失败",
-  };
-  return labels[event.type] ?? event.type;
-}
-
-type ToolOutput = {
-  source?: unknown;
-  candle_count?: unknown;
-  scanned_count?: unknown;
-  total_samples?: unknown;
-  observed_at?: unknown;
-  limitation?: unknown;
-  positions?: unknown;
-  plans?: unknown;
-  orders?: unknown;
-  notes?: unknown;
-  events?: unknown;
-  items?: unknown;
-};
-
-function extractEvidence(event: AgentTraceEvent): string[] {
-  if (event.type !== "tool_finished") return [];
-  const output = (event.data as { output?: ToolOutput }).output;
-  if (!output || typeof output !== "object") return [];
-
-  const evidence: string[] = [];
-  if (typeof output.source === "string") evidence.push(`数据来源：${output.source}`);
-  if (typeof output.candle_count === "number") evidence.push(`使用 ${output.candle_count} 根 K 线`);
-  if (typeof output.scanned_count === "number") evidence.push(`扫描 ${output.scanned_count} 个标的`);
-  if (typeof output.total_samples === "number") evidence.push(`历史样本 ${output.total_samples} 个`);
-  if (typeof output.observed_at === "string") {
-    evidence.push(`观测时间：${new Date(output.observed_at).toLocaleString()}`);
-  }
-  for (const key of ["positions", "plans", "orders", "notes", "events", "items"] as const) {
-    if (Array.isArray(output[key])) {
-      evidence.push(`${key === "positions" ? "持仓" : key} ${output[key].length} 条`);
-    }
-  }
-  if (typeof output.limitation === "string" && output.limitation) {
-    evidence.push(`限制说明：${output.limitation}`);
-  }
-  return evidence;
-}
-
 function extractKlines(trace: AgentTraceEvent[]): Candle[] {
   const klineEvent = trace.find(
     (event) =>
@@ -255,6 +199,7 @@ function App() {
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (localStorage.getItem(THEME_KEY) as "light" | "dark") ?? "light",
   );
+  const [feedback, setFeedback] = useState<Record<string, "up" | "down">>({});
 
   useEffect(() => {
     document.body.classList.toggle("dark", theme === "dark");
@@ -474,6 +419,18 @@ function App() {
     if (!userText) return;
     setMessages((current) => current.filter((item) => item.id !== assistantId));
     await sendMessage(userText);
+  };
+
+  const toggleFeedback = (id: string, value: "up" | "down") => {
+    setFeedback((current) => {
+      const next = { ...current };
+      if (next[id] === value) {
+        delete next[id];
+      } else {
+        next[id] = value;
+      }
+      return next;
+    });
   };
 
   const useStarterPrompt = (prompt: string) => setInput(prompt);
@@ -809,29 +766,6 @@ function App() {
                 extractKlines(message.trace).length > 0 && (
                   <KlineChart candles={extractKlines(message.trace)} />
                 )}
-              {message.trace && message.trace.length > 0 && (
-                <details className="execution-trace">
-                  <summary>执行过程 · {message.trace.length} 条</summary>
-                  <ol>
-                    {message.trace.map((traceEvent) => {
-                      const evidence = extractEvidence(traceEvent);
-                      return (
-                        <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
-                          <span>{describeTraceEvent(traceEvent)}</span>
-                          <small>步骤 {traceEvent.step}</small>
-                          {evidence.length > 0 && (
-                            <ul className="trace-evidence">
-                              {evidence.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </details>
-              )}
             </div>
           ))}
           <div ref={messageEndRef} />

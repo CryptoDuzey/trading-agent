@@ -74,7 +74,7 @@ describe("Lobster Trading Agent chat", () => {
     });
   });
 
-  it("shows the execution trajectory in the details panel", async () => {
+  it("streams the assistant reply after tool calls", async () => {
     const stream = new ReadableStream({
       start(controller) {
         const encoder = new TextEncoder();
@@ -105,10 +105,7 @@ describe("Lobster Trading Agent chat", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "发送消息" }));
 
-    expect(
-      await screen.findByText("调用工具：get_market_quote"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("工具完成：get_market_quote")).toBeInTheDocument();
+    expect(await screen.findByText("BTC 行情已读取")).toBeInTheDocument();
   });
 
   it("loads monitoring tasks and can pause an active task", async () => {
