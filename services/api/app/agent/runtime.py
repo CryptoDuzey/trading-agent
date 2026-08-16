@@ -14,6 +14,7 @@ from app.agent.permissions import InMemoryCheckpointStore, InMemoryConfirmationS
 from app.agent.providers.deepseek import DeepSeekProvider
 from app.agent.tools import ToolRegistry
 from app.agent.traces import InMemoryRunTraceStore
+from app.backtest.tools import register_backtest_tools
 from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.monitoring.tools import register_monitoring_tools
@@ -132,6 +133,7 @@ def build_agent_runner(owner_id: str = "default") -> AgentRunner:
     tools = ToolRegistry()
     market_client = BinanceMarketClient()
     register_binance_market_tools(tools, market_client)
+    register_backtest_tools(tools, market_client)
     register_monitoring_tools(tools, alert_store, owner_id=owner_id)
     register_portfolio_tools(
         tools,
