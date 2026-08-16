@@ -1,21 +1,22 @@
-# Lobster Trading Agent
+# Trading Agent
 
-面向 Crypto 交易研究的对话式 Agent。当前版本已经具备自研 Mini Harness、DeepSeek V4 模型适配、工具注册与执行、短期会话记忆、运行事件流，以及 Binance 多市场公开行情工具。
+面向 Crypto 交易研究的对话式 Agent。当前版本具备自研 Mini Harness、DeepSeek V4 模型适配、工具注册与执行、短期会话记忆、运行事件流，以及 Binance 多市场公开行情工具。
 
 ## 当前能力
 
-- React 对话界面，支持桌面和手机，并可展开查看 Agent 的执行过程。
+- 暗色交易终端界面，支持桌面和手机，展开执行轨迹可查看数据来源与限制。
 - FastAPI SSE 流式通信。
 - Agent Loop：模型判断、工具调用、结果观察、继续推理、最终回答。
-- DeepSeek `deepseek-v4-flash`，可通过环境变量切换模型。
+- DeepSeek `deepseek-v4-flash`，可在浏览器设置面板直接填 API 密钥和模型，也可用环境变量。
 - 工具参数校验、超时、统一错误和最大循环步数。
 - Binance 现货、U 本位、币本位和期权的统一报价/K 线接口。
 - Binance 全市场异常扫描，以及 MA20、RSI、ATR、布林带和成交量比率分析。
+- 技术形态识别：支撑/阻力位、双顶/双底。
 - PostgreSQL 保存对话、执行轨迹、确认票据和任务恢复点。
 - 对话式价格监控任务，支持暂停、恢复、冷却、站内状态和飞书机器人通知。
 - 持仓录入与多空盈亏、杠杆、集中度、止损缺失/穿越风险分析。
 - 交易计划、模拟订单（含人工确认）和复盘，自动计算多空已实现盈亏。
-- 移动平均突破信号回测：样本数、胜率、平均/中位收益和最大回撤，并说明限制。
+- 移动平均突破信号回测，以及单次宏观事件影响回测，均说明数据来源与限制。
 - 研究笔记 RAG：保存、关键词检索、按相关度排序。
 - 新闻与宏观事件工具：可插拔消息源，未配置时明确降级、绝不伪造。
 - 可信回答界面：展开执行轨迹可查看数据来源、K 线数、样本数和限制说明。
@@ -28,6 +29,7 @@
 apps/web/                  React + TypeScript 前端
 services/api/app/agent/    自研 Agent/Harness 核心（loop、tools、context、memory、权限、评测）
 services/api/app/backtest/ 信号回测
+services/api/app/patterns/ 技术形态识别与事件回测
 services/api/app/monitoring/ 价格监控与提醒
 services/api/app/portfolio/ 持仓与风险
 services/api/app/trading/  交易计划、模拟订单与复盘

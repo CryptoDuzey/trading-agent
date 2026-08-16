@@ -19,6 +19,7 @@ from app.notes.store import InMemoryNoteStore, PostgresNoteStore
 from app.notes.tools import register_note_tools
 from app.news.source import UnconfiguredNewsSource
 from app.news.tools import register_news_tools
+from app.patterns.tools import register_pattern_tools
 from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.monitoring.tools import register_monitoring_tools
@@ -146,6 +147,7 @@ def build_agent_runner(
     market_client = BinanceMarketClient()
     register_binance_market_tools(tools, market_client)
     register_backtest_tools(tools, market_client)
+    register_pattern_tools(tools, market_client)
     register_monitoring_tools(tools, alert_store, owner_id=owner_id)
     register_portfolio_tools(
         tools,
