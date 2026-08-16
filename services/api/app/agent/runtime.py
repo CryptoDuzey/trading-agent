@@ -20,6 +20,8 @@ from app.notes.tools import register_note_tools
 from app.news.source import UnconfiguredNewsSource
 from app.news.tools import register_news_tools
 from app.patterns.tools import register_pattern_tools
+from app.rag.store import InMemoryKnowledgeStore
+from app.rag.tools import register_knowledge_tools
 from app.monitoring.monitor import AlertMonitor, ChannelNotifier, FeishuNotifier
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.monitoring.tools import register_monitoring_tools
@@ -41,6 +43,8 @@ Use registered tools whenever a claim requires current market or account data.
 Never invent prices, news, positions, tool results, or historical statistics.
 Clearly distinguish observed facts, calculations, and uncertain interpretation.
 Do not promise returns. Real orders, withdrawals, and transfers are unavailable.
+When the user asks for trading principles, risk-management rules or technical
+analysis methodology, call search_knowledge to cite the built-in knowledge base.
 Reply in the user's language and keep the conclusion concise.
 """
 
@@ -103,6 +107,7 @@ alert_monitor = AlertMonitor(
         FeishuNotifier(feishu_webhook_url) if feishu_webhook_url else None
     ),
 )
+knowledge_store = InMemoryKnowledgeStore()
 
 
 class UnconfiguredProvider:
@@ -163,6 +168,7 @@ def build_agent_runner(
     )
     register_note_tools(tools, note_store, owner_id=owner_id)
     register_news_tools(tools, UnconfiguredNewsSource())
+    register_knowledge_tools(tools, knowledge_store)
     return AgentRunner(
         provider=provider,
         tools=tools,

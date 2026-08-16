@@ -18,8 +18,9 @@
 - 交易计划、模拟订单（含人工确认）和复盘，自动计算多空已实现盈亏。
 - 移动平均突破信号回测，以及单次宏观事件影响回测，均说明数据来源与限制。
 - 研究笔记 RAG：保存、关键词检索、按相关度排序。
+- 交易知识库 RAG：内置 20 条交易大师心法（趋势、止损、仓位、形态），TF-IDF 相似度检索。
 - 新闻与宏观事件工具：可插拔消息源，未配置时明确降级、绝不伪造。
-- 可信回答界面：展开执行轨迹可查看数据来源、K 线数、样本数和限制说明。
+- 三栏界面（侧栏 + 对话 + 详情栏）与执行轨迹面板，对齐 DeepSeek Harness 布局。
 - Agent 评测集：7 类 32 个用例与工具选择判定框架。
 - 首月只读：没有真实下单、提现或转账工具，模拟订单需人工确认。
 
@@ -34,6 +35,7 @@ services/api/app/monitoring/ 价格监控与提醒
 services/api/app/portfolio/ 持仓与风险
 services/api/app/trading/  交易计划、模拟订单与复盘
 services/api/app/notes/    研究笔记与 RAG
+services/api/app/rag/      交易知识库与向量检索
 services/api/app/news/     新闻与宏观事件源
 services/api/app/tools/    Binance 行情工具
 services/api/tests/        后端行为测试

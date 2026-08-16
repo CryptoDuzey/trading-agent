@@ -36,6 +36,8 @@
 - [x] 真正的 token 级流式输出（SSE 逐字推送）
 - [x] 模型选择下拉（V4 Flash / V4 Pro / Chat / Reasoner）
 - [x] 前端工具列表展示（`/api/tools` 列出全部可用工具）
+- [x] 三栏 UI 架构（侧栏 + 对话 + 详情栏，对齐 DeepSeek Harness 布局）
+- [x] RAG 向量知识库（内置 20 条交易大师心法，TF-IDF 相似度检索）
 
 ## 正在开发
 
