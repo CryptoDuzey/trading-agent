@@ -202,10 +202,19 @@ class AgentRunner:
             return
 
         content_parts: list[str] = []
+        reasoning_parts: list[str] = []
         async for chunk in stream(
             messages=state.messages,
             tools=self.tools.definitions(),
         ):
+            if chunk.reasoning_delta:
+                reasoning_parts.append(chunk.reasoning_delta)
+                yield self._event(
+                    state,
+                    "reasoning_delta",
+                    step=step,
+                    data={"content": chunk.reasoning_delta},
+                )
             if chunk.content_delta:
                 content_parts.append(chunk.content_delta)
                 yield self._event(
@@ -219,6 +228,10 @@ class AgentRunner:
                 if not turn.content and content_parts:
                     turn = turn.model_copy(
                         update={"content": "".join(content_parts)}
+                    )
+                if not turn.reasoning and reasoning_parts:
+                    turn = turn.model_copy(
+                        update={"reasoning": "".join(reasoning_parts)}
                     )
                 yield turn
                 return

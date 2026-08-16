@@ -306,6 +306,29 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   white-space: pre-wrap;
 }
 .message.assistant { display: flex; flex-direction: column; }
+.reasoning-box {
+  margin-bottom: 10px;
+  border: 1px solid var(--border-l1);
+  border-radius: 8px;
+  background: var(--bg-layer-1);
+  overflow: hidden;
+}
+.reasoning-box summary {
+  padding: 7px 12px;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+.reasoning-box summary:hover { color: var(--text-dim); }
+.reasoning-content {
+  padding: 8px 12px 12px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border-l1);
+}
+
 .assistant-content {
   font-size: 0.94rem;
   line-height: 1.75;

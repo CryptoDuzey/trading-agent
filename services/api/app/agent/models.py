@@ -35,6 +35,7 @@ class TokenUsage(BaseModel):
 
 class AssistantTurn(BaseModel):
     content: str = ""
+    reasoning: str = ""
     tool_calls: list[ToolCall] = Field(default_factory=list)
     usage: TokenUsage | None = None
 
@@ -43,6 +44,7 @@ class StreamChunk(BaseModel):
     """One chunk from a streaming model: a content delta and/or the final turn."""
 
     content_delta: str = ""
+    reasoning_delta: str = ""
     final_turn: AssistantTurn | None = None
 
 
@@ -72,6 +74,7 @@ AgentEventType = Literal[
     "tool_started",
     "tool_finished",
     "answer_delta",
+    "reasoning_delta",
     "run_completed",
     "run_failed",
     "confirmation_required",

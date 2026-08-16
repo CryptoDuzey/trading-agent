@@ -14,6 +14,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  reasoning?: string;
   trace?: AgentTraceEvent[];
 };
 
@@ -415,11 +416,14 @@ function App() {
         },
         (traceEvent) => {
           setMessages((current) =>
-            current.map((item) =>
-              item.id === assistantId
-                ? { ...item, trace: [...(item.trace ?? []), traceEvent] }
-                : item,
-            ),
+            current.map((item) => {
+              if (item.id !== assistantId) return item;
+              if (traceEvent.type === "reasoning_delta") {
+                const delta = String(traceEvent.data.content ?? "");
+                return { ...item, reasoning: (item.reasoning ?? "") + delta };
+              }
+              return { ...item, trace: [...(item.trace ?? []), traceEvent] };
+            }),
           );
         },
       );
@@ -765,6 +769,14 @@ function App() {
                 <div className="user-bubble">{message.content}</div>
               ) : (
                 <>
+                  {message.reasoning && (
+                    <details className="reasoning-box">
+                      <summary>思考过程</summary>
+                      <div className="reasoning-content">
+                        {message.reasoning}
+                      </div>
+                    </details>
+                  )}
                   <div className="assistant-content">
                     {message.content ? (
                       <ReactMarkdown>{message.content}</ReactMarkdown>

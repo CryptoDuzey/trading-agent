@@ -97,6 +97,7 @@ class DeepSeekProvider:
             ) as response:
                 response.raise_for_status()
                 content_parts: list[str] = []
+                reasoning_parts: list[str] = []
                 tool_call_slots: dict[int, dict[str, str]] = {}
                 async for line in response.aiter_lines():
                     if not line.startswith("data:"):
@@ -107,6 +108,9 @@ class DeepSeekProvider:
                     chunk = json.loads(data)
                     choices = chunk.get("choices") or []
                     delta = choices[0].get("delta") or {} if choices else {}
+                    if delta.get("reasoning_content"):
+                        reasoning_parts.append(delta["reasoning_content"])
+                        yield StreamChunk(reasoning_delta=delta["reasoning_content"])
                     if delta.get("content"):
                         content_parts.append(delta["content"])
                         yield StreamChunk(content_delta=delta["content"])
@@ -142,6 +146,7 @@ class DeepSeekProvider:
                 yield StreamChunk(
                     final_turn=AssistantTurn(
                         content="".join(content_parts),
+                        reasoning="".join(reasoning_parts),
                         tool_calls=tool_calls,
                     )
                 )
