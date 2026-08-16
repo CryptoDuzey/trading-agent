@@ -1,4 +1,10 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import "./styles.css";
 
@@ -171,6 +177,40 @@ const taskStatusLabels: Record<AlertTask["status"], string> = {
   failed: "检查失败",
 };
 
+function clampWidth(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function DragHandle({
+  side,
+  onDrag,
+}: {
+  side: "sidebar" | "details";
+  onDrag: (dx: number) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+
+  return (
+    <div
+      className={`drag-handle ${side}`}
+      data-dragging={dragging || undefined}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        startX.current = event.clientX;
+        setDragging(true);
+      }}
+      onPointerMove={(event) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        onDrag(event.clientX - startX.current);
+        startX.current = event.clientX;
+      }}
+      onPointerUp={() => setDragging(false)}
+    />
+  );
+}
+
 function App() {
   const [sessionId] = useState(getOrCreateSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -191,7 +231,10 @@ function App() {
   const [lastTrace, setLastTrace] = useState<AgentTraceEvent[]>([]);
   const [detailTab, setDetailTab] = useState<"trace" | "tools">("trace");
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [detailsWidth, setDetailsWidth] = useState(380);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     const el = messageEndRef.current;
@@ -345,7 +388,18 @@ function App() {
   const useStarterPrompt = (prompt: string) => setInput(prompt);
 
   return (
-    <main className={`workspace${detailsOpen ? "" : " details-closed"}`}>
+    <main
+      className={`workspace${detailsOpen ? "" : " details-closed"}`}
+      style={
+        {
+          gridTemplateColumns: detailsOpen
+            ? `${sidebarWidth}px minmax(0, 1fr) ${detailsWidth}px`
+            : `${sidebarWidth}px minmax(0, 1fr) 0px`,
+          "--sidebar-width": `${sidebarWidth}px`,
+          "--details-width": `${detailsWidth}px`,
+        } as CSSProperties
+      }
+    >
       <aside className="sidebar">
         <div className="brand-row">
           <div className="brand-mark" aria-hidden="true">
@@ -563,8 +617,16 @@ function App() {
             </label>
             <textarea
               id="trade-question"
+              ref={textareaRef}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => {
+                setInput(event.target.value);
+                const el = textareaRef.current;
+                if (el) {
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+                }
+              }}
               placeholder="询问行情、风险、回测，或委托一个监控任务…"
               rows={1}
             />
@@ -654,6 +716,21 @@ function App() {
           </div>
         )}
       </aside>
+
+      <DragHandle
+        side="sidebar"
+        onDrag={(dx) =>
+          setSidebarWidth((width) => clampWidth(width + dx, 200, 460))
+        }
+      />
+      {detailsOpen && (
+        <DragHandle
+          side="details"
+          onDrag={(dx) =>
+            setDetailsWidth((width) => clampWidth(width - dx, 300, 560))
+          }
+        />
+      )}
     </main>
   );
 }
