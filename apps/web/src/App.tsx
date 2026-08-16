@@ -8,6 +8,7 @@ import {
 
 import "./styles.css";
 import KlineChart, { type Candle } from "./KlineChart";
+import ReactMarkdown from "react-markdown";
 
 type ChatMessage = {
   id: string;
@@ -184,6 +185,19 @@ function extractKlines(trace: AgentTraceEvent[]): Candle[] {
   if (!klineEvent) return [];
   const output = (klineEvent.data as { output?: { candles?: Candle[] } }).output;
   return output?.candles ?? [];
+}
+
+function computeToolUsage(messages: ChatMessage[]): Record<string, number> {
+  const usage: Record<string, number> = {};
+  for (const message of messages) {
+    for (const event of message.trace ?? []) {
+      if (event.type === "tool_finished") {
+        const name = String(event.data.name);
+        usage[name] = (usage[name] ?? 0) + 1;
+      }
+    }
+  }
+  return usage;
 }
 
 function getOrCreateSessionId() {
@@ -653,9 +667,27 @@ function App() {
               {message.role === "user" ? (
                 <div className="user-bubble">{message.content}</div>
               ) : (
-                <div className="assistant-content">
-                  {message.content || <span className="typing">正在思考…</span>}
-                </div>
+                <>
+                  <div className="assistant-content">
+                    {message.content ? (
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    ) : (
+                      <span className="typing">正在思考…</span>
+                    )}
+                  </div>
+                  {message.content && (
+                    <div className="message-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(message.content);
+                        }}
+                      >
+                        复制
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
               {message.role === "assistant" &&
                 message.trace &&
@@ -773,6 +805,26 @@ function App() {
                 次工具调用
               </span>
             </div>
+          </section>
+
+          <section className="insight-card">
+            <h4>工具调用</h4>
+            {(() => {
+              const usage = computeToolUsage(messages);
+              const names = Object.keys(usage);
+              return names.length === 0 ? (
+                <p className="insight-empty">本次会话还没有调用工具。</p>
+              ) : (
+                <ul className="insight-list">
+                  {names.map((name) => (
+                    <li key={name}>
+                      <strong>{name}</strong>
+                      <span>{usage[name]} 次</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </section>
 
           <section className="insight-card">
