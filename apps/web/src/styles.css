@@ -65,6 +65,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   touch-action: none;
 }
 .drag-handle.sidebar { left: var(--sidebar-width); }
+.drag-handle.insights { right: var(--insights-width); margin-left: 0; margin-right: -4px; }
 .drag-handle:hover,
 .drag-handle[data-dragging] {
   background: rgba(65, 118, 230, 0.25);
@@ -396,6 +397,55 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .tools-list li + li { margin-top: 6px; }
 .tools-list strong { display: block; color: var(--accent); font-family: var(--font-mono); font-size: 0.74rem; font-weight: 500; }
 .tools-list span { display: block; margin-top: 4px; color: var(--text-dim); font-size: 0.7rem; line-height: 1.5; }
+
+/* ---------- 右：消息面概览 ---------- */
+.insights-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-sidebar);
+  border-left: 1px solid var(--border-l1);
+}
+.insights-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-l1);
+}
+.insights-header h3 { margin: 0; font-size: 0.92rem; font-weight: 600; }
+.insights-header button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-dim);
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1;
+}
+.insights-header button:hover { color: var(--text); background: var(--bg-layer-1); }
+.insights-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.insight-card {
+  padding: 12px 13px;
+  border: 1px solid var(--border-l1);
+  border-radius: 10px;
+  background: var(--bg-base);
+}
+.insight-card h4 { margin: 0 0 9px; font-size: 0.74rem; font-weight: 600; color: var(--text-dim); }
+.insight-stats { display: flex; flex-direction: column; gap: 4px; font-size: 0.76rem; color: var(--text); }
+.insight-empty { margin: 0; color: var(--text-faint); font-size: 0.74rem; line-height: 1.5; }
+.insight-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.insight-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.76rem;
+}
+.insight-list strong { font-family: var(--font-mono); font-weight: 600; }
+.side-long { color: var(--up); }
+.side-short { color: var(--down); }
 
 @keyframes pulse { 50% { opacity: 0.42; } }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

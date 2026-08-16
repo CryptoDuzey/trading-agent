@@ -40,6 +40,19 @@ type AlertTask = {
 
 type ToolInfo = { name: string; description: string };
 
+type PositionRow = {
+  symbol: string;
+  side: string;
+  quantity: string;
+  market: string;
+};
+
+type PlanRow = {
+  symbol: string;
+  side: string;
+  status: string;
+};
+
 const SESSION_KEY = "trading-agent-session-id";
 const API_KEY = "trading-agent-api-key";
 const MODEL_KEY = "trading-agent-model";
@@ -203,6 +216,11 @@ function App() {
   const dragStart = useRef(0);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [positions, setPositions] = useState<PositionRow[]>([]);
+  const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsWidth, setInsightsWidth] = useState(320);
+  const insightsDragStart = useRef(0);
 
   useEffect(() => {
     const el = messageEndRef.current;
@@ -210,6 +228,19 @@ function App() {
       el.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  const loadInsights = async () => {
+    try {
+      const [positionResponse, planResponse] = await Promise.all([
+        fetch(`/api/positions?owner_id=${encodeURIComponent(sessionId)}`),
+        fetch(`/api/plans?owner_id=${encodeURIComponent(sessionId)}`),
+      ]);
+      if (positionResponse.ok) setPositions(await positionResponse.json());
+      if (planResponse.ok) setPlans(await planResponse.json());
+    } catch {
+      // 概览数据加载失败不阻塞界面
+    }
+  };
 
   const loadTasks = async () => {
     setTaskPanelOpen(true);
@@ -359,8 +390,11 @@ function App() {
       className={`workspace${dragging ? " dragging" : ""}`}
       style={
         {
-          gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)`,
+          gridTemplateColumns: insightsOpen
+            ? `${sidebarWidth}px minmax(0, 1fr) ${insightsWidth}px`
+            : `${sidebarWidth}px minmax(0, 1fr) 0px`,
           "--sidebar-width": `${sidebarWidth}px`,
+          "--insights-width": `${insightsWidth}px`,
         } as CSSProperties
       }
     >
@@ -429,6 +463,17 @@ function App() {
               onClick={toggleTaskPanel}
             >
               任务 <span>{tasks.filter((task) => task.status === "active").length}</span>
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="切换概览面板"
+              onClick={() => {
+                setInsightsOpen((open) => !open);
+                if (!insightsOpen) void loadInsights();
+              }}
+            >
+              概览
             </button>
             <button
               className="icon-button"
@@ -644,6 +689,111 @@ function App() {
         </div>
       </section>
 
+      {insightsOpen && (
+      <aside className="insights-panel" aria-label="消息面概览">
+        <header className="insights-header">
+          <div>
+            <p className="overline">MARKET OVERVIEW</p>
+            <h3>消息面</h3>
+          </div>
+          <button
+            type="button"
+            aria-label="关闭概览面板"
+            onClick={() => setInsightsOpen(false)}
+          >
+            ×
+          </button>
+        </header>
+        <div className="insights-body">
+          <section className="insight-card">
+            <h4>会话</h4>
+            <div className="insight-stats">
+              <span>{messages.length} 条消息</span>
+              <span>
+                {messages.reduce(
+                  (count, message) => count + (message.trace?.length ?? 0),
+                  0,
+                )}{" "}
+                次工具调用
+              </span>
+            </div>
+          </section>
+
+          <section className="insight-card">
+            <h4>持仓 · {positions.length}</h4>
+            {positions.length === 0 ? (
+              <p className="insight-empty">暂无持仓，可让 Agent 帮你录入。</p>
+            ) : (
+              <ul className="insight-list">
+                {positions.map((position) => (
+                  <li key={`${position.symbol}-${position.side}`}>
+                    <strong>{position.symbol}</strong>
+                    <span
+                      className={
+                        position.side === "long" ? "side-long" : "side-short"
+                      }
+                    >
+                      {position.side === "long" ? "多" : "空"} {position.quantity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="insight-card">
+            <h4>
+              交易计划 ·{" "}
+              {plans.filter((plan) => plan.status === "planned").length}
+            </h4>
+            {plans.filter((plan) => plan.status === "planned").length === 0 ? (
+              <p className="insight-empty">暂无待执行计划。</p>
+            ) : (
+              <ul className="insight-list">
+                {plans
+                  .filter((plan) => plan.status === "planned")
+                  .map((plan, index) => (
+                    <li key={`${plan.symbol}-${index}`}>
+                      <strong>{plan.symbol}</strong>
+                      <span
+                        className={
+                          plan.side === "long" ? "side-long" : "side-short"
+                        }
+                      >
+                        {plan.side === "long" ? "多" : "空"}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="insight-card">
+            <h4>
+              监控任务 · {tasks.filter((task) => task.status === "active").length}
+            </h4>
+            {tasks.filter((task) => task.status === "active").length === 0 ? (
+              <p className="insight-empty">暂无监控任务。</p>
+            ) : (
+              <ul className="insight-list">
+                {tasks
+                  .filter((task) => task.status === "active")
+                  .map((task) => (
+                    <li key={task.id}>
+                      <strong>{task.symbol}</strong>
+                      <span>
+                        {task.condition === "price_below" ? "跌破" : "突破"}{" "}
+                        {task.threshold}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </aside>
+      )}
+
       <div
         className="drag-handle sidebar"
         data-dragging={dragging || undefined}
@@ -661,6 +811,22 @@ function App() {
         }}
         onPointerUp={() => setDragging(false)}
       />
+      {insightsOpen && (
+        <div
+          className="drag-handle insights"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            insightsDragStart.current = event.clientX;
+          }}
+          onPointerMove={(event) => {
+            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+            const dx = event.clientX - insightsDragStart.current;
+            insightsDragStart.current = event.clientX;
+            setInsightsWidth((width) => clampWidth(width - dx, 280, 480));
+          }}
+        />
+      )}
     </main>
   );
 }

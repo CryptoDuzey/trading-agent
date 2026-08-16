@@ -20,7 +20,9 @@ from app.agent.runtime import (
     compact_conversation,
     conversation_store,
     database,
+    position_store,
     trace_store,
+    trading_store,
 )
 from app.agent.traces import RunTrace
 from app.monitoring.models import AlertTask, CreateAlertInput
@@ -301,3 +303,23 @@ async def pause_alert(task_id: str, owner_id: str) -> AlertTask:
 @app.post("/api/alerts/{task_id}/resume", response_model=AlertTask)
 async def resume_alert(task_id: str, owner_id: str) -> AlertTask:
     return await change_alert_status(owner_id, task_id, "active")
+
+
+@app.get("/api/positions")
+async def list_positions(owner_id: str) -> list[object]:
+    return await position_store.list_for_owner(owner_id)
+
+
+@app.get("/api/plans")
+async def list_plans(owner_id: str) -> list[object]:
+    return await trading_store.list_plans(owner_id)
+
+
+@app.get("/api/orders")
+async def list_orders(owner_id: str) -> list[object]:
+    return await trading_store.list_orders(owner_id)
+
+
+@app.get("/api/reviews")
+async def list_reviews(owner_id: str) -> list[object]:
+    return await trading_store.list_reviews(owner_id)
