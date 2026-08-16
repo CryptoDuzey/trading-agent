@@ -375,6 +375,18 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   font-size: 0.9rem;
 }
 .composer textarea::placeholder { color: var(--text-faint); }
+.mic-button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-dim);
+  background: transparent;
+  font-size: 1.05rem;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.mic-button:hover:not(:disabled) { color: var(--accent); background: var(--bg-layer-1); }
+.mic-button:disabled { cursor: not-allowed; opacity: 0.35; }
 .send-button {
   width: 38px;
   height: 38px;

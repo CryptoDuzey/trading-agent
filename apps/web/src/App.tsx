@@ -221,6 +221,7 @@ function App() {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsWidth, setInsightsWidth] = useState(320);
   const insightsDragStart = useRef(0);
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     const el = messageEndRef.current;
@@ -384,6 +385,35 @@ function App() {
   };
 
   const useStarterPrompt = (prompt: string) => setInput(prompt);
+
+  const startListening = () => {
+    const SpeechRecognition =
+      (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition?: unknown })
+        .webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError("当前浏览器不支持语音输入，请手动输入。");
+      return;
+    }
+    const recognition = new (SpeechRecognition as new () => {
+      lang: string;
+      interimResults: boolean;
+      onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null;
+      onend: (() => void) | null;
+      onerror: (() => void) | null;
+      start: () => void;
+    })();
+    recognition.lang = "zh-CN";
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((current) => (current ? `${current} ${transcript}` : transcript));
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    setListening(true);
+    recognition.start();
+  };
 
   return (
     <main
@@ -676,6 +706,16 @@ function App() {
               placeholder="询问行情、风险、回测，或委托一个监控任务…"
               rows={1}
             />
+            <button
+              className="mic-button"
+              type="button"
+              aria-label={listening ? "正在聆听" : "语音输入"}
+              title="语音输入"
+              onClick={startListening}
+              disabled={isSending}
+            >
+              {listening ? "●" : "🎤"}
+            </button>
             <button
               className="send-button"
               type="submit"
