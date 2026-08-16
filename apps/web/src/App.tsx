@@ -32,6 +32,10 @@ type AlertTask = {
   trigger_count: number;
 };
 
+const SESSION_KEY = "trading-agent-session-id";
+const API_KEY = "trading-agent-api-key";
+const MODEL_KEY = "trading-agent-model";
+
 const starterPrompts = [
   "分析 BTC 当前 15 分钟走势",
   "扫描 Binance 异常放量币种",
@@ -43,7 +47,7 @@ const initialMessages: ChatMessage[] = [
     id: "welcome",
     role: "assistant",
     content:
-      "我是 Lobster。你可以让我查询行情、分析风险或创建监控任务。当前版本只提供分析，不会执行真实交易。",
+      "我是 Trading Agent，一个对话式交易研究助手。你可以让我查询行情、分析风险、回测信号或创建监控任务。当前版本只做研究分析，不会执行真实交易。",
   },
 ];
 
@@ -144,10 +148,10 @@ function extractEvidence(event: AgentTraceEvent): string[] {
 }
 
 function getOrCreateSessionId() {
-  const stored = localStorage.getItem("lobster-session-id");
+  const stored = localStorage.getItem(SESSION_KEY);
   if (stored) return stored;
   const created = crypto.randomUUID();
-  localStorage.setItem("lobster-session-id", created);
+  localStorage.setItem(SESSION_KEY, created);
   return created;
 }
 
@@ -168,9 +172,13 @@ function App() {
   const [taskPanelOpen, setTaskPanelOpen] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY) ?? "");
+  const [model, setModel] = useState(() => localStorage.getItem(MODEL_KEY) ?? "");
 
   const loadTasks = async () => {
     setTaskPanelOpen(true);
+    setSettingsOpen(false);
     setTasksLoading(true);
     setTaskError(null);
     try {
@@ -216,6 +224,12 @@ function App() {
     }
   };
 
+  const saveSettings = () => {
+    localStorage.setItem(API_KEY, apiKey.trim());
+    localStorage.setItem(MODEL_KEY, model.trim());
+    setSettingsOpen(false);
+  };
+
   const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const message = input.trim();
@@ -241,7 +255,12 @@ function App() {
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, session_id: sessionId }),
+        body: JSON.stringify({
+          message,
+          session_id: sessionId,
+          api_key: apiKey.trim() || undefined,
+          model: model.trim() || undefined,
+        }),
       });
 
       await readEventStream(
@@ -284,12 +303,16 @@ function App() {
   return (
     <main className="workspace">
       <aside className="context-panel">
-        <div className="brand-mark" aria-hidden="true">
-          L
-        </div>
-        <div>
-          <p className="overline">PRIVATE TRADING DESK</p>
-          <h1>Lobster</h1>
+        <div className="brand-row">
+          <div className="brand-mark" aria-hidden="true">
+            TA
+          </div>
+          <div>
+            <p className="overline">AI TRADING DESK</p>
+            <h1 className="brand-name">
+              Trading<em>Agent</em>
+            </h1>
+          </div>
         </div>
 
         <section className="market-status" aria-label="系统状态">
@@ -297,13 +320,13 @@ function App() {
             <span className="live-dot" />
             <span>分析服务在线</span>
           </div>
-          <p>Binance · 只读模式</p>
+          <p>Binance · 只读研究模式</p>
         </section>
 
         <div className="context-copy">
           <span>当前工作区</span>
-          <strong>新交易研究</strong>
-          <p>尚未载入持仓和监控任务</p>
+          <strong>交易研究</strong>
+          <p>行情 · 持仓 · 风险 · 回测 · 复盘</p>
         </div>
 
         <footer>
@@ -318,18 +341,31 @@ function App() {
             <p className="overline">CONVERSATION 01</p>
             <h2>今天想研究什么？</h2>
           </div>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="打开任务面板"
-            onClick={toggleTaskPanel}
-          >
-            任务 <span>{tasks.filter((task) => task.status === "active").length}</span>
-          </button>
+          <div className="header-actions">
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="打开任务面板"
+              onClick={toggleTaskPanel}
+            >
+              任务 <span>{tasks.filter((task) => task.status === "active").length}</span>
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="打开设置"
+              onClick={() => {
+                setSettingsOpen((open) => !open);
+                setTaskPanelOpen(false);
+              }}
+            >
+              设置
+            </button>
+          </div>
         </header>
 
         {taskPanelOpen && (
-          <aside className="task-panel" aria-label="监控任务面板">
+          <aside className="overlay-panel" aria-label="监控任务面板">
             <header>
               <div>
                 <p className="overline">DELEGATED TASKS</p>
@@ -372,11 +408,57 @@ function App() {
           </aside>
         )}
 
+        {settingsOpen && (
+          <aside className="overlay-panel" aria-label="设置面板">
+            <header>
+              <div>
+                <p className="overline">SETTINGS</p>
+                <h3>模型与密钥</h3>
+              </div>
+              <button type="button" onClick={() => setSettingsOpen(false)} aria-label="关闭设置">
+                ×
+              </button>
+            </header>
+            <div style={{ marginTop: 18 }}>
+              <div className="field">
+                <label htmlFor="api-key">DeepSeek API Key</label>
+                <input
+                  id="api-key"
+                  type="password"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  placeholder="sk-..."
+                  autoComplete="off"
+                />
+                <p className="field-hint">密钥只存在你的浏览器里，随请求发送，不会写进代码仓库。</p>
+              </div>
+              <div className="field">
+                <label htmlFor="model-name">模型</label>
+                <input
+                  id="model-name"
+                  type="text"
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  placeholder="deepseek-v4-flash"
+                  autoComplete="off"
+                />
+                <p className="field-hint">留空则使用默认模型。</p>
+              </div>
+              <button className="primary-button" type="button" onClick={saveSettings}>
+                保存设置
+              </button>
+              <p className="settings-note">
+                没有密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
+              </p>
+            </div>
+          </aside>
+        )}
+
         <div className="message-list" aria-live="polite">
           {messages.map((message) => (
             <article className={`message ${message.role}`} key={message.id}>
               <span className="message-role">
-                {message.role === "assistant" ? "LOBSTER" : "YOU"}
+                {message.role === "assistant" ? "AGENT" : "YOU"}
               </span>
               <div className="message-body">
                 <div className="message-content">
@@ -431,7 +513,7 @@ function App() {
               id="trade-question"
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="询问行情、风险，或委托一个监控任务…"
+              placeholder="询问行情、风险、回测，或委托一个监控任务…"
               rows={1}
             />
             <button

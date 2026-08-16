@@ -63,6 +63,8 @@ app = FastAPI(title="Lobster Trading Agent API", lifespan=lifespan)
 class ChatRequest(BaseModel):
     message: str
     session_id: str = ""
+    api_key: str = ""
+    model: str = ""
 
     @field_validator("message")
     @classmethod
@@ -93,8 +95,14 @@ def as_sse(event: str, payload: dict[str, Any]) -> str:
 async def stream_agent_reply(
     message: str,
     session_id: str,
+    api_key: str = "",
+    model: str = "",
 ) -> AsyncIterator[str]:
-    runner = build_agent_runner(session_id)
+    runner = build_agent_runner(
+        session_id,
+        api_key=api_key.strip() or None,
+        model=model.strip() or None,
+    )
     history = await conversation_store.get_recent(session_id)
     assistant_parts: list[str] = []
     completed = False
@@ -233,7 +241,12 @@ async def approve_confirmation(confirmation_id: str) -> StreamingResponse:
 async def stream_chat(request: ChatRequest) -> StreamingResponse:
     session_id = request.session_id or str(uuid4())
     return StreamingResponse(
-        stream_agent_reply(request.message, session_id),
+        stream_agent_reply(
+            request.message,
+            session_id,
+            request.api_key,
+            request.model,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -54,7 +54,7 @@ def test_confirmation_endpoint_resumes_a_paused_agent_run(monkeypatch) -> None:
     monkeypatch.setattr(
         main_module,
         "build_agent_runner",
-        lambda _owner_id="default": runner,
+        lambda *args, **kwargs: runner,
     )
 
     async def make_requests():

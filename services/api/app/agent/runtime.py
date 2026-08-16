@@ -35,7 +35,7 @@ from app.persistence.stores import (
 )
 from app.tools.binance_market import BinanceMarketClient, register_binance_market_tools
 
-SYSTEM_PROMPT = """You are Lobster, a cautious cryptocurrency trading research agent.
+SYSTEM_PROMPT = """You are Trading Agent, a cautious cryptocurrency trading research agent.
 Use registered tools whenever a claim requires current market or account data.
 Never invent prices, news, positions, tool results, or historical statistics.
 Clearly distinguish observed facts, calculations, and uncertain interpretation.
@@ -130,12 +130,16 @@ async def compact_conversation(
     ).compact(session_id)
 
 
-def build_agent_runner(owner_id: str = "default") -> AgentRunner:
-    api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
-    model = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash").strip()
+def build_agent_runner(
+    owner_id: str = "default",
+    api_key: str | None = None,
+    model: str | None = None,
+) -> AgentRunner:
+    resolved_key = (api_key or os.getenv("DEEPSEEK_API_KEY", "")).strip()
+    resolved_model = (model or os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")).strip()
     provider = (
-        DeepSeekProvider(api_key=api_key, model=model)
-        if api_key
+        DeepSeekProvider(api_key=resolved_key, model=resolved_model)
+        if resolved_key
         else UnconfiguredProvider()
     )
     tools = ToolRegistry()
