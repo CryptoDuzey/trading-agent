@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import "./styles.css";
 
@@ -191,6 +191,14 @@ function App() {
   const [lastTrace, setLastTrace] = useState<AgentTraceEvent[]>([]);
   const [detailTab, setDetailTab] = useState<"trace" | "tools">("trace");
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = messageEndRef.current;
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const loadTasks = async () => {
     setTaskPanelOpen(true);
@@ -518,18 +526,22 @@ function App() {
         )}
 
         <div className="message-list" aria-live="polite">
-          {messages.map((message) => (
-            <article className={`message ${message.role}`} key={message.id}>
-              <span className="message-role">
-                {message.role === "assistant" ? "AGENT" : "YOU"}
-              </span>
-              <div className="message-body">
-                <div className="message-content">
-                  {message.content || <span className="typing">正在思考…</span>}
+          {messages.map((message) =>
+            message.role === "user" ? (
+              <div className="message user" key={message.id}>
+                <div className="user-bubble">{message.content}</div>
+              </div>
+            ) : (
+              <div className="message assistant" key={message.id}>
+                <div className="assistant-content">
+                  {message.content || (
+                    <span className="typing">正在思考…</span>
+                  )}
                 </div>
               </div>
-            </article>
-          ))}
+            ),
+          )}
+          <div ref={messageEndRef} />
         </div>
 
         {messages.length === 1 && (
