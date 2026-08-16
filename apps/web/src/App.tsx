@@ -380,29 +380,15 @@ function App() {
     setSettingsOpen(false);
   };
 
-  const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const message = input.trim();
+  const sendMessage = async (message: string) => {
     if (!message || isSending) return;
-
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: message,
-    };
     const assistantId = crypto.randomUUID();
-
     setMessages((current) => [
       ...current,
-      userMessage,
       { id: assistantId, role: "assistant", content: "" },
     ]);
-    setInput("");
     setError(null);
     setIsSending(true);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
 
     try {
       const response = await fetch("/api/chat/stream", {
@@ -450,6 +436,40 @@ function App() {
       setIsSending(false);
       void loadSessions();
     }
+  };
+
+  const submitMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const message = input.trim();
+    if (!message || isSending) return;
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+    };
+    setMessages((current) => [...current, userMessage]);
+    setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+    await sendMessage(message);
+  };
+
+  const regenerate = async (assistantId: string) => {
+    if (isSending) return;
+    const index = messages.findIndex((item) => item.id === assistantId);
+    if (index < 0) return;
+    let userText = "";
+    for (let i = index - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        userText = messages[i].content;
+        break;
+      }
+    }
+    if (!userText) return;
+    setMessages((current) => current.filter((item) => item.id !== assistantId));
+    await sendMessage(userText);
   };
 
   const useStarterPrompt = (prompt: string) => setInput(prompt);
@@ -761,6 +781,12 @@ function App() {
                         }}
                       >
                         复制
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void regenerate(message.id)}
+                      >
+                        重新生成
                       </button>
                     </div>
                   )}
