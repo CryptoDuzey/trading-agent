@@ -46,14 +46,13 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 }
 
 .workspace {
+  position: relative;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 380px;
+  grid-template-columns: 280px minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
   background: var(--bg-base);
 }
-.workspace.details-closed { grid-template-columns: 280px minmax(0, 1fr) 0px; }
-.workspace.details-closed .details-panel { display: none; }
 
 .drag-handle {
   position: absolute;
@@ -66,7 +65,6 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   touch-action: none;
 }
 .drag-handle.sidebar { left: var(--sidebar-width); }
-.drag-handle.details { right: var(--details-width); margin-left: 0; margin-right: -4px; }
 .drag-handle:hover,
 .drag-handle[data-dragging] {
   background: rgba(65, 118, 230, 0.35);
@@ -352,45 +350,34 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .error-message { margin: 0 0 8px; color: var(--down); font-size: 0.76rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 
-/* ---------- 右：详情栏 ---------- */
-.details-panel {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--bg-sidebar);
-  border-left: 1px solid var(--border-l1);
+/* ---------- 消息内联执行轨迹 ---------- */
+.execution-trace {
+  margin-top: 10px;
+  border: 1px solid var(--border-l1);
+  border-radius: 8px;
+  overflow: hidden;
 }
-.details-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-l1);
+.execution-trace summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
 }
-.details-tabs { display: flex; gap: 2px; }
-.details-tabs button {
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 7px;
-  color: var(--text-dim);
-  background: transparent;
-  font-size: 0.76rem;
-}
-.details-tabs button.active { color: var(--text); background: var(--bg-layer-1); }
-.trajectory, .tools-catalogue { flex: 1; overflow-y: auto; padding: 14px; }
-.trajectory-list { margin: 0; padding: 0; list-style: none; }
-.trajectory-list li {
+.execution-trace summary:hover { color: var(--text-dim); background: var(--bg-layer-1); }
+.execution-trace ol { margin: 0; padding: 0 10px 10px; list-style: none; }
+.execution-trace li {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
-  padding: 9px 11px;
+  gap: 10px;
+  padding: 7px 9px;
   border-left: 2px solid var(--border-l2);
   border-radius: 0 6px 6px 0;
 }
-.trajectory-list li + li { margin-top: 5px; }
-.trajectory-list li span { color: var(--text-dim); font-size: 0.76rem; }
-.trajectory-list small { color: var(--text-faint); font-family: var(--font-mono); font-size: 0.62rem; }
+.execution-trace li + li { margin-top: 3px; }
+.execution-trace li span { color: var(--text-dim); font-size: 0.74rem; }
+.execution-trace small { color: var(--text-faint); font-family: var(--font-mono); font-size: 0.62rem; }
 .trace-evidence {
   flex-basis: 100%;
   margin: 3px 0 0;
@@ -412,18 +399,16 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 980px) {
-  .workspace, .workspace.details-closed { grid-template-columns: 220px minmax(0, 1fr); }
-  .details-panel { position: fixed; z-index: 30; inset: 0 0 0 auto; width: min(380px, 90vw); }
-  .workspace.details-closed .details-panel { display: flex; }
+  .workspace { grid-template-columns: 220px minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
-  .workspace, .workspace.details-closed { display: block; }
+  .workspace { display: block; }
   .sidebar { display: none; }
   .chat-header { padding: 12px 14px; }
   .chat-header h2 { font-size: 0.95rem; }
   .model-select { display: none; }
   .message-list, .starter-grid, .composer-wrap { width: calc(100% - 28px); }
-  .message { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
+  .user-bubble { max-width: 92%; }
   .starter-grid { grid-template-columns: 1fr; }
   .starter-grid button { min-height: 58px; }
 }

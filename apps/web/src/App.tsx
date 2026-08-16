@@ -181,36 +181,6 @@ function clampWidth(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
-function DragHandle({
-  side,
-  onDrag,
-}: {
-  side: "sidebar" | "details";
-  onDrag: (dx: number) => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef(0);
-
-  return (
-    <div
-      className={`drag-handle ${side}`}
-      data-dragging={dragging || undefined}
-      onPointerDown={(event) => {
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        startX.current = event.clientX;
-        setDragging(true);
-      }}
-      onPointerMove={(event) => {
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-        onDrag(event.clientX - startX.current);
-        startX.current = event.clientX;
-      }}
-      onPointerUp={() => setDragging(false)}
-    />
-  );
-}
-
 function App() {
   const [sessionId] = useState(getOrCreateSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -228,11 +198,9 @@ function App() {
   );
   const [toolsList, setToolsList] = useState<ToolInfo[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
-  const [lastTrace, setLastTrace] = useState<AgentTraceEvent[]>([]);
-  const [detailTab, setDetailTab] = useState<"trace" | "tools">("trace");
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(280);
-  const [detailsWidth, setDetailsWidth] = useState(380);
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef(0);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -333,9 +301,9 @@ function App() {
     setInput("");
     setError(null);
     setIsSending(true);
-    setDetailTab("trace");
-    setDetailsOpen(true);
-    setLastTrace([]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
 
     try {
       const response = await fetch("/api/chat/stream", {
@@ -361,7 +329,6 @@ function App() {
           );
         },
         (traceEvent) => {
-          setLastTrace((current) => [...current, traceEvent]);
           setMessages((current) =>
             current.map((item) =>
               item.id === assistantId
@@ -389,14 +356,11 @@ function App() {
 
   return (
     <main
-      className={`workspace${detailsOpen ? "" : " details-closed"}`}
+      className={`workspace${dragging ? " dragging" : ""}`}
       style={
         {
-          gridTemplateColumns: detailsOpen
-            ? `${sidebarWidth}px minmax(0, 1fr) ${detailsWidth}px`
-            : `${sidebarWidth}px minmax(0, 1fr) 0px`,
+          gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)`,
           "--sidebar-width": `${sidebarWidth}px`,
-          "--details-width": `${detailsWidth}px`,
         } as CSSProperties
       }
     >
@@ -538,7 +502,7 @@ function App() {
                 ×
               </button>
             </header>
-            <div style={{ marginTop: 18 }}>
+            <div style={{ marginTop: 16 }}>
               <div className="field">
                 <label htmlFor="api-key">DeepSeek API Key</label>
                 <input
@@ -575,26 +539,63 @@ function App() {
               <p className="settings-note">
                 没有密钥时系统仍可启动，但会明确提示模型未配置，不会伪造行情分析。
               </p>
+              <div className="field tools-block">
+                <label>可用工具（{toolsList.length}）</label>
+                {toolsLoading ? (
+                  <p className="field-hint">正在加载工具列表…</p>
+                ) : (
+                  <ul className="tools-list">
+                    {toolsList.map((tool) => (
+                      <li key={tool.name}>
+                        <strong>{tool.name}</strong>
+                        <span>{tool.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </aside>
         )}
 
         <div className="message-list" aria-live="polite">
-          {messages.map((message) =>
-            message.role === "user" ? (
-              <div className="message user" key={message.id}>
+          {messages.map((message) => (
+            <div
+              className={`message ${message.role}`}
+              key={message.id}
+            >
+              {message.role === "user" ? (
                 <div className="user-bubble">{message.content}</div>
-              </div>
-            ) : (
-              <div className="message assistant" key={message.id}>
+              ) : (
                 <div className="assistant-content">
-                  {message.content || (
-                    <span className="typing">正在思考…</span>
-                  )}
+                  {message.content || <span className="typing">正在思考…</span>}
                 </div>
-              </div>
-            ),
-          )}
+              )}
+              {message.trace && message.trace.length > 0 && (
+                <details className="execution-trace">
+                  <summary>执行过程 · {message.trace.length} 条</summary>
+                  <ol>
+                    {message.trace.map((traceEvent) => {
+                      const evidence = extractEvidence(traceEvent);
+                      return (
+                        <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
+                          <span>{describeTraceEvent(traceEvent)}</span>
+                          <small>步骤 {traceEvent.step}</small>
+                          {evidence.length > 0 && (
+                            <ul className="trace-evidence">
+                              {evidence.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </details>
+              )}
+            </div>
+          ))}
           <div ref={messageEndRef} />
         </div>
 
@@ -643,94 +644,23 @@ function App() {
         </div>
       </section>
 
-      <aside className="details-panel" aria-label="详情面板">
-        <header className="details-header">
-          <div className="details-tabs">
-            <button
-              type="button"
-              className={detailTab === "trace" ? "active" : ""}
-              onClick={() => setDetailTab("trace")}
-            >
-              执行
-            </button>
-            <button
-              type="button"
-              className={detailTab === "tools" ? "active" : ""}
-              onClick={() => {
-                setDetailTab("tools");
-                if (toolsList.length === 0) void openSettings();
-              }}
-            >
-              工具
-            </button>
-          </div>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="关闭详情面板"
-            onClick={() => setDetailsOpen(false)}
-          >
-            ×
-          </button>
-        </header>
-
-        {detailTab === "trace" ? (
-          <div className="trajectory">
-            {lastTrace.length === 0 ? (
-              <p className="task-empty">发送一条消息后，这里会展示 Agent 的执行过程。</p>
-            ) : (
-              <ol className="trajectory-list">
-                {lastTrace.map((traceEvent) => {
-                  const evidence = extractEvidence(traceEvent);
-                  return (
-                    <li key={`${traceEvent.run_id}-${traceEvent.sequence}`}>
-                      <span>{describeTraceEvent(traceEvent)}</span>
-                      <small>步骤 {traceEvent.step}</small>
-                      {evidence.length > 0 && (
-                        <ul className="trace-evidence">
-                          {evidence.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </div>
-        ) : (
-          <div className="tools-catalogue">
-            {toolsLoading ? (
-              <p className="task-empty">正在加载工具列表…</p>
-            ) : (
-              <ul className="tools-list">
-                {toolsList.map((tool) => (
-                  <li key={tool.name}>
-                    <strong>{tool.name}</strong>
-                    <span>{tool.description}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </aside>
-
-      <DragHandle
-        side="sidebar"
-        onDrag={(dx) =>
-          setSidebarWidth((width) => clampWidth(width + dx, 200, 460))
-        }
+      <div
+        className="drag-handle sidebar"
+        data-dragging={dragging || undefined}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragStart.current = event.clientX;
+          setDragging(true);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          const dx = event.clientX - dragStart.current;
+          dragStart.current = event.clientX;
+          setSidebarWidth((width) => clampWidth(width + dx, 200, 460));
+        }}
+        onPointerUp={() => setDragging(false)}
       />
-      {detailsOpen && (
-        <DragHandle
-          side="details"
-          onDrag={(dx) =>
-            setDetailsWidth((width) => clampWidth(width - dx, 300, 560))
-          }
-        />
-      )}
     </main>
   );
 }
