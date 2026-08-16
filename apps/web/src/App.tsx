@@ -433,6 +433,11 @@ function App() {
     });
   };
 
+  const clearConversation = () => {
+    setMessages(initialMessages);
+    setFeedback({});
+  };
+
   const useStarterPrompt = (prompt: string) => setInput(prompt);
 
   const startListening = () => {
@@ -601,6 +606,14 @@ function App() {
               }
             >
               {theme === "light" ? "🌙" : "☀️"}
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="清空对话"
+              onClick={clearConversation}
+            >
+              清空
             </button>
           </div>
         </header>
@@ -800,6 +813,16 @@ function App() {
                   el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
                 }
               }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder="询问行情、风险、回测，或委托一个监控任务…"
               rows={1}
             />
@@ -822,7 +845,9 @@ function App() {
               {isSending ? "…" : "↑"}
             </button>
           </form>
-          <p className="composer-hint">点击箭头发送 · 首月不执行真实交易</p>
+          <p className="composer-hint">
+            Enter 发送 · Shift+Enter 换行 · 首月不执行真实交易
+          </p>
         </div>
       </section>
 
