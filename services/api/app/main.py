@@ -209,6 +209,11 @@ async def list_tools() -> list[dict[str, str]]:
     ]
 
 
+@app.get("/api/sessions")
+async def list_sessions() -> list[dict[str, str | int]]:
+    return await conversation_store.list_sessions()
+
+
 @app.get("/api/runs/{run_id}")
 async def get_run_trace(run_id: str) -> RunTrace:
     trace = await trace_store.get(run_id)

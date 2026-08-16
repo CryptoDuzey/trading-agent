@@ -46,6 +46,13 @@ class InMemoryConversationStore:
                 )
             return messages
 
+    async def list_sessions(self) -> list[dict[str, str | int]]:
+        async with self._lock:
+            return [
+                {"id": session_id, "message_count": len(messages)}
+                for session_id, messages in self._sessions.items()
+            ]
+
     async def get_compaction_batch(
         self,
         session_id: str,

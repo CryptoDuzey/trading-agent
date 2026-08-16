@@ -58,6 +58,7 @@ type PlanRow = {
 const SESSION_KEY = "trading-agent-session-id";
 const API_KEY = "trading-agent-api-key";
 const MODEL_KEY = "trading-agent-model";
+const THEME_KEY = "trading-agent-theme";
 
 const MODEL_OPTIONS = [
   { value: "deepseek-v4-flash", label: "V4 Flash" },
@@ -220,7 +221,7 @@ function clampWidth(value: number, min: number, max: number) {
 }
 
 function App() {
-  const [sessionId] = useState(getOrCreateSessionId);
+  const [sessionId, setSessionId] = useState(getOrCreateSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -243,10 +244,21 @@ function App() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [sessions, setSessions] = useState<
+    { id: string; message_count: number }[]
+  >([]);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsWidth, setInsightsWidth] = useState(320);
   const insightsDragStart = useRef(0);
   const [listening, setListening] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(
+    () => (localStorage.getItem(THEME_KEY) as "light" | "dark") ?? "light",
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("dark", theme === "dark");
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     const el = messageEndRef.current;
@@ -266,6 +278,36 @@ function App() {
     } catch {
       // 概览数据加载失败不阻塞界面
     }
+  };
+
+  const loadSessions = async () => {
+    try {
+      const response = await fetch("/api/sessions");
+      if (response.ok) {
+        setSessions(await response.json());
+      }
+    } catch {
+      // 会话列表加载失败不阻塞界面
+    }
+  };
+
+  const newSession = () => {
+    const id = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, id);
+    setSessionId(id);
+    setMessages(initialMessages);
+    setPositions([]);
+    setPlans([]);
+    void loadSessions();
+  };
+
+  const switchSession = (id: string) => {
+    if (id === sessionId) return;
+    localStorage.setItem(SESSION_KEY, id);
+    setSessionId(id);
+    setMessages(initialMessages);
+    setPositions([]);
+    setPlans([]);
   };
 
   const loadTasks = async () => {
@@ -406,6 +448,7 @@ function App() {
       );
     } finally {
       setIsSending(false);
+      void loadSessions();
     }
   };
 
@@ -467,11 +510,35 @@ function App() {
         </div>
 
         <section className="workspace-list">
-          <p className="overline">WORKSPACE</p>
-          <button className="workspace-item active" type="button">
-            <span className="ws-dot" />
-            交易研究
-          </button>
+          <div className="workspace-list-head">
+            <p className="overline">WORKSPACE</p>
+            <button
+              className="new-session-btn"
+              type="button"
+              aria-label="新建会话"
+              onClick={newSession}
+            >
+              +
+            </button>
+          </div>
+          {sessions.length === 0 ? (
+            <button className="workspace-item active" type="button">
+              <span className="ws-dot" />
+              交易研究
+            </button>
+          ) : (
+            sessions.map((item) => (
+              <button
+                className={`workspace-item${item.id === sessionId ? " active" : ""}`}
+                type="button"
+                key={item.id}
+                onClick={() => switchSession(item.id)}
+              >
+                <span className="ws-dot" />
+                {item.id.slice(0, 8)} · {item.message_count}
+              </button>
+            ))
+          )}
         </section>
 
         <section className="market-status">
@@ -543,6 +610,16 @@ function App() {
               }}
             >
               设置
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="切换主题"
+              onClick={() =>
+                setTheme((current) => (current === "light" ? "dark" : "light"))
+              }
+            >
+              {theme === "light" ? "🌙" : "☀️"}
             </button>
           </div>
         </header>

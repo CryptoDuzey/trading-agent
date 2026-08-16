@@ -91,6 +91,20 @@ class PostgresConversationStore:
                 )
             return messages
 
+    async def list_sessions(self) -> list[dict[str, str | int]]:
+        async with self.database.sessions() as session:
+            rows = (
+                await session.execute(
+                    select(ConversationRow.id, func.count(MessageRow.id))
+                    .outerjoin(MessageRow, MessageRow.session_id == ConversationRow.id)
+                    .group_by(ConversationRow.id)
+                    .order_by(ConversationRow.updated_at.desc())
+                )
+            ).all()
+            return [
+                {"id": str(row[0]), "message_count": int(row[1])} for row in rows
+            ]
+
     async def get_compaction_batch(
         self,
         session_id: str,

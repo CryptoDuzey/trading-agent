@@ -23,6 +23,24 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.dark {
+  color-scheme: dark;
+  --bg-base: rgb(21, 21, 23);
+  --bg-sidebar: rgb(27, 27, 28);
+  --bg-layer-1: rgb(35, 35, 36);
+  --bg-layer-2: rgb(44, 44, 46);
+  --border-l1: rgba(255, 255, 255, 0.06);
+  --border-l2: rgba(255, 255, 255, 0.12);
+  --accent: rgb(86, 134, 254);
+  --accent-hover: rgb(103, 158, 254);
+  --accent-soft: rgb(23, 37, 84);
+  --text: rgb(235, 238, 242);
+  --text-dim: rgb(173, 178, 184);
+  --text-faint: rgb(129, 133, 140);
+  --up: rgb(78, 209, 126);
+  --down: rgb(242, 90, 90);
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
@@ -104,6 +122,18 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 }
 
 .workspace-list { margin-top: 14px; }
+.workspace-list-head { display: flex; align-items: center; justify-content: space-between; }
+.new-session-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-l2);
+  border-radius: 6px;
+  color: var(--text-dim);
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1;
+}
+.new-session-btn:hover { color: var(--text); background: var(--bg-layer-1); }
 .workspace-item {
   display: flex;
   align-items: center;
