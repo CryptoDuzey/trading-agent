@@ -13,16 +13,29 @@
 - Binance 全市场异常扫描，以及 MA20、RSI、ATR、布林带和成交量比率分析。
 - PostgreSQL 保存对话、执行轨迹、确认票据和任务恢复点。
 - 对话式价格监控任务，支持暂停、恢复、冷却、站内状态和飞书机器人通知。
-- 首月只读：没有真实下单、提现或转账工具。
+- 持仓录入与多空盈亏、杠杆、集中度、止损缺失/穿越风险分析。
+- 交易计划、模拟订单（含人工确认）和复盘，自动计算多空已实现盈亏。
+- 移动平均突破信号回测：样本数、胜率、平均/中位收益和最大回撤，并说明限制。
+- 研究笔记 RAG：保存、关键词检索、按相关度排序。
+- 新闻与宏观事件工具：可插拔消息源，未配置时明确降级、绝不伪造。
+- 可信回答界面：展开执行轨迹可查看数据来源、K 线数、样本数和限制说明。
+- Agent 评测集：7 类 32 个用例与工具选择判定框架。
+- 首月只读：没有真实下单、提现或转账工具，模拟订单需人工确认。
 
 ## 目录
 
 ```text
-apps/web/                 React + TypeScript 前端
-services/api/app/agent/   自研 Agent/Harness 核心
-services/api/app/tools/   Agent 可调用的外部工具
-services/api/tests/       后端行为测试
-docs/                     路线和进度
+apps/web/                  React + TypeScript 前端
+services/api/app/agent/    自研 Agent/Harness 核心（loop、tools、context、memory、权限、评测）
+services/api/app/backtest/ 信号回测
+services/api/app/monitoring/ 价格监控与提醒
+services/api/app/portfolio/ 持仓与风险
+services/api/app/trading/  交易计划、模拟订单与复盘
+services/api/app/notes/    研究笔记与 RAG
+services/api/app/news/     新闻与宏观事件源
+services/api/app/tools/    Binance 行情工具
+services/api/tests/        后端行为测试
+docs/                      路线、进度与 Harness 对照
 ```
 
 ## 配置
