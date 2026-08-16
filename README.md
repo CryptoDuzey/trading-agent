@@ -1,13 +1,13 @@
-﻿# Trading Agent
+# Trading Agent
 
 面向 Crypto 交易研究的对话式 Agent。当前版本具备自研 Mini Harness、DeepSeek V4 模型适配、工具注册与执行、短期会话记忆、运行事件流，以及 Binance 多市场公开行情工具。
 
 ## 当前能力
 
-- 暗色交易终端界面，支持桌面和手机，展开执行轨迹可查看数据来源与限制。
-- FastAPI SSE 流式通信。
+- 浅/深色可切换的交易终端界面，支持桌面和手机；消息支持 Markdown、思考过程、复制/重新生成/反馈。
+- FastAPI SSE 流式通信（真 token 级流式输出）。
 - Agent Loop：模型判断、工具调用、结果观察、继续推理、最终回答。
-- DeepSeek `deepseek-v4-flash`，可在浏览器设置面板直接填 API 密钥和模型，也可用环境变量。
+- DeepSeek 多模型（Flash/Pro/Chat/Reasoner），可在浏览器设置面板直接填 API 密钥和模型，也可用环境变量。
 - 工具参数校验、超时、统一错误和最大循环步数。
 - Binance 现货、U 本位、币本位和期权的统一报价/K 线接口。
 - Binance 全市场异常扫描，以及 MA20、RSI、ATR、布林带和成交量比率分析。
@@ -18,9 +18,10 @@
 - 交易计划、模拟订单（含人工确认）和复盘，自动计算多空已实现盈亏。
 - 移动平均突破信号回测，以及单次宏观事件影响回测，均说明数据来源与限制。
 - 研究笔记 RAG：保存、关键词检索、按相关度排序。
-- 交易知识库 RAG：内置 20 条交易大师心法（趋势、止损、仓位、形态），TF-IDF 相似度检索。
+- 交易知识库 RAG：内置 139 条交易大师心法（趋势、止损、仓位、形态、加密专项），TF-IDF 相似度检索。
 - 新闻与宏观事件工具：可插拔消息源，未配置时明确降级、绝不伪造。
-- 三栏界面（侧栏 + 对话 + 详情栏）与执行轨迹面板，对齐 DeepSeek Harness 布局。
+- 侧栏（会话列表/新建/切换）+ 对话 + 可拖拽概览面板，对齐 DeepSeek Harness 布局。
+- 语音输入、K 线图（K线+MA20+成交量+RSI）、主题切换、会话持久化。
 - Agent 评测集：7 类 32 个用例与工具选择判定框架。
 - 首月只读：没有真实下单、提现或转账工具，模拟订单需人工确认。
 
@@ -96,3 +97,13 @@ uv run pytest tests/persistence/test_postgres_stores.py
 ```
 
 Binance 衍生品接口可能根据服务器所在地区返回 HTTP 451。系统会把它记录为明确的工具错误，不会绕过地区限制或把失败解释成“没有行情”。
+
+## 部署
+
+一键 Docker 部署(前端 + 后端 + PostgreSQL),国内云服务器步骤见 [docs/deployment.md](docs/deployment.md)。
+
+```powershell
+cp .env.example .env   # 填入 DEEPSEEK_API_KEY 和数据库密码
+docker compose up -d --build
+# 访问 http://服务器IP:8080
+```
