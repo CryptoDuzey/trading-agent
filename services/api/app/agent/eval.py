@@ -1,4 +1,4 @@
-﻿"""Deterministic evaluation harness for the Trading Agent.
+"""Deterministic evaluation harness for the Trading Agent.
 
 The evaluation set encodes 30+ representative questions across the seven
 behaviours the roadmap calls out: tool selection, argument extraction,

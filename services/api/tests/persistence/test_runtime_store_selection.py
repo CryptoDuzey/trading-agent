@@ -1,4 +1,4 @@
-﻿from app.agent.memory import InMemoryConversationStore
+from app.agent.memory import InMemoryConversationStore
 from app.agent.runtime import build_store_bundle
 from app.monitoring.store import InMemoryAlertStore, PostgresAlertStore
 from app.persistence.stores import (

@@ -1,4 +1,4 @@
-﻿# Trading Agent Mini Harness 与 DeepSeek Harness 对照
+# Trading Agent Mini Harness 与 DeepSeek Harness 对照
 
 本文件是 30 天路线 Day 18 的产物：对照 Trading Agent 自研的 Mini Harness
 （`services/api/app/agent/`）与 DeepSeek Harness（`C:\Users\tongd\Desktop\deepseek`

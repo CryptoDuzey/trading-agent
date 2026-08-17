@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Protocol
