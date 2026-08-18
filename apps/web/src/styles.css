@@ -155,6 +155,26 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--up); }
 .market-status p, .sidebar footer p { margin: 6px 0 0; color: var(--text-faint); font-size: 0.73rem; line-height: 1.6; }
 
+.capability-list { margin-top: 18px; }
+.capability-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  transition: background 0.15s var(--ease);
+}
+.capability-item:hover { background: rgba(0, 0, 0, 0.04); }
+.capability-icon { width: 20px; text-align: center; font-size: 0.9rem; }
+.capability-name { flex: 1; color: var(--text-dim); }
+.capability-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
 .sidebar footer { margin-top: auto; padding: 0 4px; }
 .safety-badge {
   display: inline-block;

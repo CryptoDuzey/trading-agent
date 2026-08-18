@@ -79,6 +79,15 @@ const starterPrompts = [
   "检查我的持仓风险",
 ];
 
+const CAPABILITIES = [
+  { icon: "📊", name: "行情", count: 4 },
+  { icon: "📈", name: "技术分析", count: 5 },
+  { icon: "💼", name: "交易", count: 7 },
+  { icon: "🛡", name: "风险", count: 3 },
+  { icon: "📚", name: "知识库", count: 3 },
+  { icon: "📰", name: "消息", count: 4 },
+];
+
 const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
@@ -772,6 +781,17 @@ function App() {
             <span>分析服务在线</span>
           </div>
           <p>Binance · 只读研究模式</p>
+        </section>
+
+        <section className="capability-list">
+          <p className="overline">能力</p>
+          {CAPABILITIES.map((capability) => (
+            <div className="capability-item" key={capability.name}>
+              <span className="capability-icon">{capability.icon}</span>
+              <span className="capability-name">{capability.name}</span>
+              <span className="capability-count">{capability.count}</span>
+            </div>
+          ))}
         </section>
 
         <footer>
