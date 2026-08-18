@@ -15,3 +15,10 @@ createRoot(root).render(
   </StrictMode>,
 );
 
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // 离线缓存注册失败不影响主功能
+    });
+  });
+}
