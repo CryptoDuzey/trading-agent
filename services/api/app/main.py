@@ -209,6 +209,22 @@ async def list_tools() -> list[dict[str, str]]:
     ]
 
 
+@app.get("/api/market-tickers")
+async def market_tickers() -> list[dict[str, str]]:
+    from app.tools.binance_market import BinanceMarketClient, GetQuoteInput
+
+    client = BinanceMarketClient()
+    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+    tickers: list[dict[str, str]] = []
+    for symbol in symbols:
+        try:
+            quote = await client.get_quote(GetQuoteInput(market="spot", symbol=symbol))
+            tickers.append({"symbol": symbol, "price": quote.price})
+        except Exception:
+            continue
+    return tickers
+
+
 @app.get("/api/sessions")
 async def list_sessions() -> list[dict[str, str | int]]:
     return await conversation_store.list_sessions()

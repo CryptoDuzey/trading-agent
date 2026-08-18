@@ -533,6 +533,11 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .insight-list strong { font-family: var(--font-mono); font-weight: 600; }
 .side-long { color: var(--up); }
 .side-short { color: var(--down); }
+.ticker-price {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
 
 .tools-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .tools-list { margin: 0; padding: 0; list-style: none; }

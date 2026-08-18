@@ -56,6 +56,11 @@ type PlanRow = {
   status: string;
 };
 
+type TickerRow = {
+  symbol: string;
+  price: string;
+};
+
 const SESSION_KEY = "trading-agent-session-id";
 const API_KEY = "trading-agent-api-key";
 const MODEL_KEY = "trading-agent-model";
@@ -189,6 +194,7 @@ function App() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [tickers, setTickers] = useState<TickerRow[]>([]);
   const [sessions, setSessions] = useState<
     { id: string; message_count: number }[]
   >([]);
@@ -215,12 +221,14 @@ function App() {
 
   const loadInsights = async () => {
     try {
-      const [positionResponse, planResponse] = await Promise.all([
+      const [positionResponse, planResponse, tickerResponse] = await Promise.all([
         fetch(`/api/positions?owner_id=${encodeURIComponent(sessionId)}`),
         fetch(`/api/plans?owner_id=${encodeURIComponent(sessionId)}`),
+        fetch("/api/market-tickers"),
       ]);
       if (positionResponse.ok) setPositions(await positionResponse.json());
       if (planResponse.ok) setPlans(await planResponse.json());
+      if (tickerResponse.ok) setTickers(await tickerResponse.json());
     } catch {
       // 概览数据加载失败不阻塞界面
     }
@@ -867,6 +875,26 @@ function App() {
           </button>
         </header>
         <div className="insights-body">
+          <section className="insight-card">
+            <h4>市场行情</h4>
+            {tickers.length === 0 ? (
+              <p className="insight-empty">行情加载中…</p>
+            ) : (
+              <ul className="insight-list">
+                {tickers.map((ticker) => (
+                  <li key={ticker.symbol}>
+                    <strong>{ticker.symbol.replace("USDT", "")}</strong>
+                    <span className="ticker-price">
+                      {Number(ticker.price).toLocaleString("en-US", {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className="insight-card">
             <h4>会话</h4>
             <div className="insight-stats">
