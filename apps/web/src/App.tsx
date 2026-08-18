@@ -159,6 +159,70 @@ function extractScanResults(trace: AgentTraceEvent[]): ScanOpportunity[] {
   return output?.opportunities ?? [];
 }
 
+type BacktestResult = {
+  symbol: string;
+  total_samples: number;
+  win_rate_percent: number;
+  average_return_percent: number;
+  max_drawdown_percent: number;
+};
+
+function extractBacktestResult(trace: AgentTraceEvent[]): BacktestResult | null {
+  const event = trace.find(
+    (item) =>
+      item.type === "tool_finished" && item.data.name === "run_signal_backtest",
+  );
+  if (!event) return null;
+  const output = event.data.output as Partial<BacktestResult> | undefined;
+  if (!output || typeof output.total_samples !== "number") return null;
+  return {
+    symbol: output.symbol ?? "",
+    total_samples: output.total_samples,
+    win_rate_percent: output.win_rate_percent ?? 0,
+    average_return_percent: output.average_return_percent ?? 0,
+    max_drawdown_percent: output.max_drawdown_percent ?? 0,
+  };
+}
+
+function BacktestCard({ result }: { result: BacktestResult }) {
+  return (
+    <div className="backtest-card">
+      <div className="backtest-title">
+        {result.symbol || "信号"} 回测
+      </div>
+      <div className="metric-grid">
+        <div className="metric">
+          <span className="metric-value">{result.total_samples}</span>
+          <span className="metric-label">样本数</span>
+        </div>
+        <div className="metric">
+          <span className="metric-value">
+            {result.win_rate_percent.toFixed(1)}%
+          </span>
+          <span className="metric-label">胜率</span>
+        </div>
+        <div className="metric">
+          <span
+            className={`metric-value ${
+              result.average_return_percent >= 0 ? "scan-up" : "scan-down"
+            }`}
+          >
+            {result.average_return_percent >= 0 ? "+" : ""}
+            {result.average_return_percent.toFixed(2)}%
+          </span>
+          <span className="metric-label">平均收益</span>
+        </div>
+        <div className="metric">
+          <span className="metric-value">
+            {result.max_drawdown_percent.toFixed(2)}%
+          </span>
+          <span className="metric-label">最大回撤</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function computeToolUsage(messages: ChatMessage[]): Record<string, number> {
   const usage: Record<string, number> = {};
   for (const message of messages) {
@@ -906,6 +970,13 @@ function App() {
                       </tbody>
                     </table>
                   </div>
+                )}
+              {message.role === "assistant" &&
+                message.trace &&
+                extractBacktestResult(message.trace) && (
+                  <BacktestCard
+                    result={extractBacktestResult(message.trace)!}
+                  />
                 )}
             </div>
           ))}

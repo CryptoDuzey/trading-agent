@@ -435,6 +435,41 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 .scan-down { color: var(--down); }
 .scan-signals { color: var(--text-dim); font-size: 0.72rem; }
 
+/* 回测指标卡片 */
+.backtest-card {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+.backtest-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+}
+.metric-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.metric-label { font-size: 0.66rem; color: var(--text-faint); }
+
 /* 快捷问题 */
 .starter-grid {
   display: grid;
