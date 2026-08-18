@@ -206,6 +206,23 @@ function App() {
     () => (localStorage.getItem(THEME_KEY) as "light" | "dark") ?? "light",
   );
   const [feedback, setFeedback] = useState<Record<string, "up" | "down">>({});
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+        setCommandQuery("");
+      }
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle("dark", theme === "dark");
@@ -476,6 +493,32 @@ function App() {
     setListening(true);
     recognition.start();
   };
+
+  const commands = [
+    { id: "new", icon: "＋", label: "新建会话", run: newSession },
+    {
+      id: "theme",
+      icon: theme === "light" ? "🌙" : "☀️",
+      label: "切换主题",
+      run: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+    },
+    {
+      id: "insights",
+      icon: "▤",
+      label: "打开概览面板",
+      run: () => {
+        setInsightsOpen(true);
+        void loadInsights();
+      },
+    },
+    { id: "tasks", icon: "◷", label: "打开监控任务", run: () => void loadTasks() },
+    { id: "settings", icon: "⚙", label: "打开设置", run: () => void openSettings() },
+    { id: "clear", icon: "⌫", label: "清空对话", run: clearConversation },
+  ];
+
+  const filteredCommands = commands.filter((command) =>
+    command.label.toLowerCase().includes(commandQuery.toLowerCase()),
+  );
 
   return (
     <main
@@ -1036,6 +1079,42 @@ function App() {
             setInsightsWidth((width) => clampWidth(width - dx, 280, 480));
           }}
         />
+      )}
+
+      {commandOpen && (
+        <div className="command-overlay" onClick={() => setCommandOpen(false)}>
+          <div
+            className="command-palette"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              className="command-input"
+              autoFocus
+              value={commandQuery}
+              onChange={(event) => setCommandQuery(event.target.value)}
+              placeholder="搜索命令…"
+            />
+            <ul className="command-list">
+              {filteredCommands.map((command) => (
+                <li key={command.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      command.run();
+                      setCommandOpen(false);
+                    }}
+                  >
+                    <span className="command-icon">{command.icon}</span>
+                    {command.label}
+                  </button>
+                </li>
+              ))}
+              {filteredCommands.length === 0 && (
+                <li className="command-empty">没有匹配的命令</li>
+              )}
+            </ul>
+          </div>
+        </div>
       )}
     </main>
   );
