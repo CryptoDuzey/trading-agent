@@ -36,7 +36,10 @@ body {
   margin: 0;
   min-width: 320px;
   color: var(--text);
-  background: var(--bg-base);
+  background:
+    radial-gradient(1100px 620px at 18% -12%, rgba(0, 122, 255, 0.06), transparent 62%),
+    radial-gradient(900px 560px at 92% 112%, rgba(0, 122, 255, 0.05), transparent 58%),
+    var(--bg-base);
   font-family: var(--font-ui);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -60,6 +63,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   overflow: hidden;
   background: var(--bg-base);
 }
+.workspace.sidebar-collapsed .sidebar { display: none; }
 
 .drag-handle {
   position: absolute;
@@ -398,6 +402,38 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
 }
+
+/* 扫描结果表格 */
+.scan-table-wrap {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+.scan-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.scan-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+.scan-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.scan-table tbody tr:last-child td { border-bottom: 0; }
+.scan-table tbody tr:hover { background: rgba(0, 122, 255, 0.04); }
+.scan-symbol { font-family: var(--font-mono); font-weight: 600; }
+.scan-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.scan-up { color: var(--up); }
+.scan-down { color: var(--down); }
+.scan-signals { color: var(--text-dim); font-size: 0.72rem; }
 
 /* 快捷问题 */
 .starter-grid {

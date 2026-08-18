@@ -138,6 +138,27 @@ function extractKlines(trace: AgentTraceEvent[]): Candle[] {
   return output?.candles ?? [];
 }
 
+type ScanOpportunity = {
+  symbol: string;
+  last_price: string;
+  price_change_percent_24h: number;
+  quote_volume_24h: number;
+  anomaly_score: number;
+  signals: string[];
+};
+
+function extractScanResults(trace: AgentTraceEvent[]): ScanOpportunity[] {
+  const scanEvent = trace.find(
+    (event) =>
+      event.type === "tool_finished" && event.data.name === "scan_binance_market",
+  );
+  if (!scanEvent) return [];
+  const output = (
+    scanEvent.data as { output?: { opportunities?: ScanOpportunity[] } }
+  ).output;
+  return output?.opportunities ?? [];
+}
+
 function computeToolUsage(messages: ChatMessage[]): Record<string, number> {
   const usage: Record<string, number> = {};
   for (const message of messages) {
@@ -188,6 +209,7 @@ function App() {
   const [toolsList, setToolsList] = useState<ToolInfo[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef(0);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
@@ -522,12 +544,10 @@ function App() {
 
   return (
     <main
-      className={`workspace${dragging ? " dragging" : ""}`}
+      className={`workspace${dragging ? " dragging" : ""}${sidebarCollapsed ? " sidebar-collapsed" : ""}`}
       style={
         {
-          gridTemplateColumns: insightsOpen
-            ? `${sidebarWidth}px minmax(0, 1fr) ${insightsWidth}px`
-            : `${sidebarWidth}px minmax(0, 1fr) 0px`,
+          gridTemplateColumns: `${sidebarCollapsed ? "0px" : `${sidebarWidth}px`} minmax(0, 1fr) ${insightsOpen ? `${insightsWidth}px` : "0px"}`,
           "--sidebar-width": `${sidebarWidth}px`,
           "--insights-width": `${insightsWidth}px`,
         } as CSSProperties
@@ -599,6 +619,14 @@ function App() {
             <h2>今天想研究什么？</h2>
           </div>
           <div className="header-actions">
+            <button
+              className="icon-button"
+              type="button"
+              aria-label={sidebarCollapsed ? "展开侧栏" : "收起侧栏"}
+              onClick={() => setSidebarCollapsed((c) => !c)}
+            >
+              {sidebarCollapsed ? "◧" : "◨"}
+            </button>
             <select
               className="model-select"
               value={model}
@@ -829,6 +857,55 @@ function App() {
                 message.trace &&
                 extractKlines(message.trace).length > 0 && (
                   <KlineChart candles={extractKlines(message.trace)} />
+                )}
+              {message.role === "assistant" &&
+                message.trace &&
+                extractScanResults(message.trace).length > 0 && (
+                  <div className="scan-table-wrap">
+                    <table className="scan-table">
+                      <thead>
+                        <tr>
+                          <th>币种</th>
+                          <th>最新价</th>
+                          <th>24h 涨跌</th>
+                          <th>成交额</th>
+                          <th>信号</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {extractScanResults(message.trace).map((item) => (
+                          <tr key={item.symbol}>
+                            <td className="scan-symbol">{item.symbol}</td>
+                            <td className="scan-num">
+                              {Number(item.last_price).toLocaleString("en-US", {
+                                maximumFractionDigits: 4,
+                              })}
+                            </td>
+                            <td
+                              className={`scan-num ${
+                                item.price_change_percent_24h >= 0
+                                  ? "scan-up"
+                                  : "scan-down"
+                              }`}
+                            >
+                              {item.price_change_percent_24h >= 0 ? "+" : ""}
+                              {item.price_change_percent_24h.toFixed(2)}%
+                            </td>
+                            <td className="scan-num">
+                              {item.quote_volume_24h >= 1e9
+                                ? `${(item.quote_volume_24h / 1e9).toFixed(2)}B`
+                                : item.quote_volume_24h >= 1e6
+                                  ? `${(item.quote_volume_24h / 1e6).toFixed(1)}M`
+                                  : item.quote_volume_24h.toFixed(0)}
+                            </td>
+                            <td className="scan-signals">
+                              {item.signals.slice(0, 2).join(" · ") || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
             </div>
           ))}
