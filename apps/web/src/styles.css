@@ -538,6 +538,38 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
   text-align: right;
 }
 
+/* 交易计划卡片 */
+.plan-card {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+.plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.plan-symbol { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+.plan-side { font-size: 0.78rem; font-weight: 600; }
+.plan-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+}
+.plan-field-label { font-size: 0.66rem; color: var(--text-faint); }
+.plan-field-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.plan-note { margin: 10px 0 0; color: var(--text-dim); font-size: 0.74rem; line-height: 1.6; }
+
 /* 快捷问题 */
 .starter-grid {
   display: grid;

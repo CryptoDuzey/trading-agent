@@ -276,6 +276,79 @@ function BacktestCard({ result }: { result: BacktestResult }) {
   );
 }
 
+type TradingPlanRow = {
+  symbol: string;
+  side: string;
+  entry_low: string;
+  entry_high: string;
+  stop_loss: string;
+  take_profit: string;
+  position_size: string;
+  risk_note: string;
+};
+
+function extractTradingPlans(trace: AgentTraceEvent[]): TradingPlanRow[] {
+  const event = trace.find(
+    (item) =>
+      item.type === "tool_finished" && item.data.name === "create_trading_plan",
+  );
+  if (!event) return [];
+  const output = event.data.output as Partial<TradingPlanRow> | undefined;
+  if (!output || !output.symbol) return [];
+  return [
+    {
+      symbol: output.symbol,
+      side: output.side ?? "long",
+      entry_low: output.entry_low ?? "",
+      entry_high: output.entry_high ?? "",
+      stop_loss: output.stop_loss ?? "",
+      take_profit: output.take_profit ?? "",
+      position_size: output.position_size ?? "",
+      risk_note: output.risk_note ?? "",
+    },
+  ];
+}
+
+function TradingPlanCard({ plan }: { plan: TradingPlanRow }) {
+  return (
+    <div className="plan-card">
+      <div className="plan-head">
+        <span className="plan-symbol">{plan.symbol}</span>
+        <span
+          className={`plan-side ${
+            plan.side === "long" ? "scan-up" : "scan-down"
+          }`}
+        >
+          {plan.side === "long" ? "做多" : "做空"}
+        </span>
+      </div>
+      <div className="plan-fields">
+        <div className="plan-field">
+          <span className="plan-field-label">入场区间</span>
+          <span className="plan-field-value">
+            {plan.entry_low} ~ {plan.entry_high}
+          </span>
+        </div>
+        <div className="plan-field">
+          <span className="plan-field-label">止损</span>
+          <span className="plan-field-value">{plan.stop_loss}</span>
+        </div>
+        <div className="plan-field">
+          <span className="plan-field-label">止盈</span>
+          <span className="plan-field-value">{plan.take_profit}</span>
+        </div>
+        <div className="plan-field">
+          <span className="plan-field-label">仓位</span>
+          <span className="plan-field-value">{plan.position_size}</span>
+        </div>
+      </div>
+      {plan.risk_note && (
+        <p className="plan-note">{plan.risk_note}</p>
+      )}
+    </div>
+  );
+}
+
 function PortfolioRiskCard({ result }: { result: PortfolioRiskResult }) {
   const levelLabel: Record<string, string> = {
     low: "低风险",
@@ -1109,6 +1182,15 @@ function App() {
                     result={extractPortfolioRisk(message.trace)!}
                   />
                 )}
+              {message.role === "assistant" &&
+                message.trace &&
+                extractTradingPlans(message.trace).length > 0 &&
+                extractTradingPlans(message.trace).map((plan, index) => (
+                  <TradingPlanCard
+                    key={`${plan.symbol}-${index}`}
+                    plan={plan}
+                  />
+                ))}
             </div>
           ))}
           <div ref={messageEndRef} />
