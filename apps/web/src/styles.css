@@ -470,6 +470,54 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-
 }
 .metric-label { font-size: 0.66rem; color: var(--text-faint); }
 
+/* 持仓风险卡片 */
+.portfolio-card {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+.portfolio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.risk-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.risk-low { color: var(--up); background: rgba(52, 199, 89, 0.12); }
+.risk-medium { color: var(--warn); background: rgba(255, 149, 0, 0.12); }
+.risk-high { color: var(--down); background: rgba(255, 59, 48, 0.1); }
+.risk-critical { color: #fff; background: var(--down); }
+.risk-unknown { color: var(--text-dim); background: rgba(0, 0, 0, 0.05); }
+.portfolio-total { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.9rem; font-weight: 600; }
+.position-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.position-list li {
+  display: grid;
+  grid-template-columns: 1fr 36px 90px 70px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  font-size: 0.78rem;
+}
+.position-symbol { font-family: var(--font-mono); font-weight: 600; }
+.position-side { font-size: 0.72rem; }
+.position-pnl, .position-return {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 /* 快捷问题 */
 .starter-grid {
   display: grid;

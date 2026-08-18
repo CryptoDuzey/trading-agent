@@ -184,6 +184,50 @@ function extractBacktestResult(trace: AgentTraceEvent[]): BacktestResult | null 
   };
 }
 
+type PositionRiskRow = {
+  symbol: string;
+  side: string;
+  unrealized_pnl: number;
+  return_on_margin_percent: number;
+};
+
+type PortfolioRiskResult = {
+  risk_level: string;
+  total_unrealized_pnl: number;
+  positions: PositionRiskRow[];
+};
+
+function extractPortfolioRisk(trace: AgentTraceEvent[]): PortfolioRiskResult | null {
+  const event = trace.find(
+    (item) =>
+      item.type === "tool_finished" && item.data.name === "analyze_portfolio_risk",
+  );
+  if (!event) return null;
+  const output = event.data.output as
+    | {
+        risk_level?: string;
+        total_unrealized_pnl?: number;
+        positions?: Array<{
+          symbol: string;
+          side: string;
+          unrealized_pnl: number;
+          return_on_margin_percent: number;
+        }>;
+      }
+    | undefined;
+  if (!output || !Array.isArray(output.positions)) return null;
+  return {
+    risk_level: output.risk_level ?? "unknown",
+    total_unrealized_pnl: output.total_unrealized_pnl ?? 0,
+    positions: output.positions.map((position) => ({
+      symbol: position.symbol,
+      side: position.side,
+      unrealized_pnl: position.unrealized_pnl,
+      return_on_margin_percent: position.return_on_margin_percent,
+    })),
+  };
+}
+
 function BacktestCard({ result }: { result: BacktestResult }) {
   return (
     <div className="backtest-card">
@@ -219,6 +263,66 @@ function BacktestCard({ result }: { result: BacktestResult }) {
           <span className="metric-label">最大回撤</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PortfolioRiskCard({ result }: { result: PortfolioRiskResult }) {
+  const levelLabel: Record<string, string> = {
+    low: "低风险",
+    medium: "中风险",
+    high: "高风险",
+    critical: "严重风险",
+    unknown: "未知",
+  };
+  return (
+    <div className="portfolio-card">
+      <div className="portfolio-head">
+        <span className={`risk-badge risk-${result.risk_level}`}>
+          {levelLabel[result.risk_level] ?? result.risk_level}
+        </span>
+        <span
+          className={`portfolio-total ${
+            result.total_unrealized_pnl >= 0 ? "scan-up" : "scan-down"
+          }`}
+        >
+          {result.total_unrealized_pnl >= 0 ? "+" : ""}
+          {result.total_unrealized_pnl.toLocaleString("en-US", {
+            maximumFractionDigits: 2,
+          })}{" "}
+          盈亏
+        </span>
+      </div>
+      <ul className="position-list">
+        {result.positions.map((position) => (
+          <li key={`${position.symbol}-${position.side}`}>
+            <span className="position-symbol">{position.symbol}</span>
+            <span
+              className={`position-side ${
+                position.side === "long" ? "scan-up" : "scan-down"
+              }`}
+            >
+              {position.side === "long" ? "多" : "空"}
+            </span>
+            <span
+              className={`position-pnl ${
+                position.unrealized_pnl >= 0 ? "scan-up" : "scan-down"
+              }`}
+            >
+              {position.unrealized_pnl >= 0 ? "+" : ""}
+              {position.unrealized_pnl.toFixed(2)}
+            </span>
+            <span
+              className={`position-return ${
+                position.return_on_margin_percent >= 0 ? "scan-up" : "scan-down"
+              }`}
+            >
+              {position.return_on_margin_percent >= 0 ? "+" : ""}
+              {position.return_on_margin_percent.toFixed(1)}%
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -976,6 +1080,13 @@ function App() {
                 extractBacktestResult(message.trace) && (
                   <BacktestCard
                     result={extractBacktestResult(message.trace)!}
+                  />
+                )}
+              {message.role === "assistant" &&
+                message.trace &&
+                extractPortfolioRisk(message.trace) && (
+                  <PortfolioRiskCard
+                    result={extractPortfolioRisk(message.trace)!}
                   />
                 )}
             </div>
