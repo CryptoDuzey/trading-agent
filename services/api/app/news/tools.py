@@ -4,8 +4,12 @@ from app.news.models import (
     MacroEventsResult,
     MarketNewsInput,
     MarketNewsResult,
+    WebSearchInput,
+    WebSearchItem,
+    WebSearchResult,
 )
 from app.news.source import NewsSource
+from app.news.websearch import search_web as _search_web
 
 
 def register_news_tools(
@@ -66,4 +70,27 @@ def register_news_tools(
         handler=get_macro_events,
         permission="read",
         timeout_seconds=15,
+    )
+
+    async def web_search(request: WebSearchInput) -> WebSearchResult:
+        items = await _search_web(request.query, request.limit)
+        return WebSearchResult(
+            query=request.query,
+            results=[
+                WebSearchItem(title=item.title, url=item.url, snippet=item.snippet)
+                for item in items
+            ],
+        )
+
+    registry.register(
+        name="search_web",
+        description=(
+            "Search the public web for news, articles and discussions related "
+            "to a query. Use it to gather current information; results need "
+            "cross-validation and are not investment advice."
+        ),
+        input_model=WebSearchInput,
+        handler=web_search,
+        permission="read",
+        timeout_seconds=20,
     )

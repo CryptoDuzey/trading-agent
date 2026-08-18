@@ -48,3 +48,24 @@ class MacroEventsResult(BaseModel):
     source: str = "未配置"
     observed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     limitation: str = "宏观日历未配置，无法获取真实事件时间，因此不返回任何事件。"
+
+
+class WebSearchInput(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    limit: int = Field(default=5, ge=1, le=10)
+
+
+class WebSearchItem(BaseModel):
+    title: str
+    url: str
+    snippet: str = ""
+
+
+class WebSearchResult(BaseModel):
+    query: str
+    results: list[WebSearchItem]
+    source: str = "DuckDuckGo"
+    limitation: str = (
+        "搜索结果来自公开网页搜索，可能不完整、有滞后或含观点性内容，"
+        "需要结合其他工具交叉验证，不是投资建议。"
+    )
